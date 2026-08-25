@@ -18,6 +18,57 @@
       overflow: hidden;
     }
 
+    /* Tabs */
+    .tabs {
+      height: 38px;
+      display: flex;
+      align-items: center;
+      background: #202124;
+      padding-left: 8px;
+      gap: 4px;
+    }
+
+    .tab {
+      height: 32px;
+      min-width: 150px;
+      max-width: 220px;
+      padding: 0 10px;
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      background: #292a2d;
+      border-radius: 8px 8px 0 0;
+      cursor: pointer;
+      font-size: 13px;
+    }
+
+    .tab.active {
+      background: #3c4043;
+    }
+
+    .tab-title {
+      overflow: hidden;
+      white-space: nowrap;
+      text-overflow: ellipsis;
+    }
+
+    .close-tab {
+      margin-left: 8px;
+      cursor: pointer;
+      font-size: 16px;
+    }
+
+    #newTab {
+      width: 32px;
+      height: 32px;
+      border: none;
+      background: transparent;
+      color: white;
+      font-size: 22px;
+      cursor: pointer;
+    }
+
+    /* Toolbar */
     .toolbar {
       height: 70px;
       display: flex;
@@ -64,11 +115,19 @@
 
 <body>
 
+  <!-- TAB BAR -->
+  <div class="tabs" id="tabs"></div>
+  <button id="newTab" title="New Tab">+</button>
+
+  <!-- TOOLBAR -->
   <div class="toolbar">
+
     <div class="logo">YB</div>
 
     <button onclick="goBack()" title="Back">←</button>
+
     <button onclick="goForward()" title="Forward">→</button>
+
     <button onclick="reloadPage()" title="Reload">⟳</button>
 
     <input
@@ -78,10 +137,13 @@
       autocomplete="off"
       onkeydown="handleAddress(event)"
     >
+
   </div>
 
   <script>
+
     function handleAddress(event) {
+
       if (event.key !== "Enter") return;
 
       const input = document.getElementById("address").value.trim();
@@ -90,30 +152,153 @@
 
       let url = input;
 
-      if (!url.startsWith("http://") && !url.startsWith("https://")) {
+      if (
+        !url.startsWith("http://") &&
+        !url.startsWith("https://")
+      ) {
+
         if (url.includes(".") && !url.includes(" ")) {
+
           url = "https://" + url;
+
         } else {
+
           url =
             "https://www.google.com/search?q=" +
             encodeURIComponent(url);
+
         }
       }
 
       window.browserAPI.navigate(url);
     }
 
+
     function goBack() {
       window.browserAPI.back();
     }
+
 
     function goForward() {
       window.browserAPI.forward();
     }
 
+
     function reloadPage() {
       window.browserAPI.reload();
     }
+
+
+    /* New tab button */
+
+    document.getElementById("newTab").addEventListener("click", () => {
+      window.browserAPI.newTab();
+    });
+
+
+    /* Keyboard shortcuts */
+
+    document.addEventListener("keydown", (event) => {
+
+      /* Ctrl + T */
+      if (event.ctrlKey && event.key.toLowerCase() === "t") {
+
+        event.preventDefault();
+
+        window.browserAPI.newTab();
+      }
+
+
+      /* Ctrl + W */
+      if (event.ctrlKey && event.key.toLowerCase() === "w") {
+
+        event.preventDefault();
+
+        window.browserAPI.closeTab();
+      }
+
+
+      /* Ctrl + Tab */
+      if (event.ctrlKey && event.key === "Tab") {
+
+        event.preventDefault();
+
+        window.browserAPI.switchTab("next");
+      }
+
+    });
+    if (
+  event.ctrlKey &&
+  event.shiftKey &&
+  event.key === "Tab"
+) {
+  event.preventDefault();
+
+  window.browserAPI.switchTab("previous");
+}
+
+
+    /* Receive tab information */
+
+    window.browserAPI.onTabUpdate((data) => {
+
+      const tabsContainer = document.getElementById("tabs");
+
+      tabsContainer.innerHTML = "";
+
+      data.tabs.forEach((tab, index) => {
+
+        const tabElement = document.createElement("div");
+
+        tabElement.className =
+          "tab" + (index === data.activeIndex ? " active" : "");
+
+        tabElement.onclick = () => {
+          window.browserAPI.switchTab(index);
+        };
+
+
+        const title = document.createElement("span");
+
+        title.className = "tab-title";
+
+        title.textContent = tab.title || "New Tab";
+
+
+        const close = document.createElement("span");
+
+        close.className = "close-tab";
+
+        close.textContent = "×";
+
+
+        close.onclick = (event) => {
+
+          event.stopPropagation();
+
+          window.browserAPI.closeTab();
+        };
+
+
+        tabElement.appendChild(title);
+
+        tabElement.appendChild(close);
+
+        tabsContainer.appendChild(tabElement);
+
+      });
+
+    });
+
+
+    /* Update address bar */
+
+    window.browserAPI.onAddressUpdate((url) => {
+
+      document.getElementById("address").value = url;
+
+    });
+
   </script>
 
 </body>
