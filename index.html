@@ -845,7 +845,12 @@
 
       }
     );
-
+window.browserAPI.onFocusAddressBar(
+  () => {
+    address.focus();
+    address.select();
+  }
+);
 
   </script>
 

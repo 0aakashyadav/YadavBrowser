@@ -596,7 +596,24 @@ function sendAddressUpdate(url) {
 /* =========================================================
    NAVIGATION
 ========================================================= */
+/* =========================================================
+   FOCUS ADDRESS BAR
+========================================================= */
+ipcMain.on(
+  "focus-address-bar",
+  () => {
+    if (
+      !win ||
+      win.isDestroyed()
+    ) {
+      return;
+    }
 
+    win.webContents.send(
+      "focus-address-bar"
+    );
+  }
+);
 ipcMain.on(
   "navigate",
   (_, url) => {
