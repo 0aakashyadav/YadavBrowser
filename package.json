@@ -1,0 +1,16 @@
+{
+  "name": "yadavbrowser",
+  "version": "1.0.0",
+  "description": "YadavBrowser - A simple Chromium-based web browser",
+  "main": "main.js",
+  "author": "Aakash",
+  "license": "MIT",
+  "scripts": {
+    "start": "electron .",
+    "build": "electron-builder --win"
+  },
+  "devDependencies": {
+    "electron": "^37.2.6",
+    "electron-builder": "^26.0.12"
+  }
+}
