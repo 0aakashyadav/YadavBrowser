@@ -17,7 +17,7 @@ const TOOLBAR_HEIGHT = 108;
    CREATE TAB
 ========================================================= */
 
-function createTab(url = "https://www.google.com") {
+function createTab(url = `file://${path.join(__dirname, "yadav-search.html")}`) {
   const view = new BrowserView({
     webPreferences: {
       contextIsolation: true,
@@ -192,7 +192,7 @@ function createTab(url = "https://www.google.com") {
    NEW TAB
 ========================================================= */
 
-function createNewTab(url = "https://www.google.com") {
+function createNewTab(url = `file://${path.join(__dirname, "yadav-search.html")}`) {
   const tab = createTab(url);
 
   activeTab = tabs.length - 1;

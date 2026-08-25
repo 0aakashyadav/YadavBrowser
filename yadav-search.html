@@ -1,0 +1,172 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+
+  <title>Yadav Search</title>
+
+  <style>
+    * {
+      box-sizing: border-box;
+    }
+
+    html,
+    body {
+      margin: 0;
+      width: 100%;
+      height: 100%;
+    }
+
+    body {
+      font-family: Arial, sans-serif;
+      background: #202124;
+      color: white;
+
+      display: flex;
+      justify-content: center;
+      align-items: center;
+    }
+
+    .container {
+      width: 90%;
+      max-width: 700px;
+      text-align: center;
+    }
+
+    .logo {
+      width: 110px;
+      height: 110px;
+      margin: 0 auto 20px;
+      border-radius: 50%;
+      overflow: hidden;
+    }
+
+    .logo img {
+      width: 100%;
+      height: 100%;
+      object-fit: cover;
+    }
+
+    h1 {
+      margin: 0 0 30px;
+      font-size: 42px;
+      letter-spacing: 1px;
+    }
+
+    .search-box {
+      display: flex;
+      width: 100%;
+      height: 56px;
+
+      background: white;
+      border-radius: 30px;
+      overflow: hidden;
+    }
+
+    .search-box input {
+      flex: 1;
+      border: none;
+      outline: none;
+
+      padding: 0 24px;
+
+      font-size: 17px;
+      color: #202124;
+    }
+
+    .search-box button {
+      width: 70px;
+      border: none;
+
+      background: #4285f4;
+      color: white;
+
+      font-size: 22px;
+      cursor: pointer;
+    }
+
+    .search-box button:hover {
+      background: #3367d6;
+    }
+
+    .subtitle {
+      margin-top: 18px;
+      color: #aaa;
+      font-size: 14px;
+    }
+  </style>
+</head>
+
+<body>
+
+  <div class="container">
+
+    <div class="logo">
+      <img
+        src="logo.png"
+        alt="YadavBrowser"
+      >
+    </div>
+
+    <h1>Yadav Search</h1>
+
+    <form
+      class="search-box"
+      id="searchForm"
+    >
+
+      <input
+        id="searchInput"
+        type="text"
+        placeholder="Search the web..."
+        autocomplete="off"
+        autofocus
+      >
+
+      <button
+        type="submit"
+        aria-label="Search"
+      >
+        🔍
+      </button>
+
+    </form>
+
+    <div class="subtitle">
+      Search the web with Yadav Search
+    </div>
+
+  </div>
+
+  <script>
+    const searchForm =
+      document.getElementById("searchForm");
+
+    const searchInput =
+      document.getElementById("searchInput");
+
+    searchForm.addEventListener(
+      "submit",
+      (event) => {
+
+        event.preventDefault();
+
+        const query =
+          searchInput.value.trim();
+
+        if (!query) {
+          return;
+        }
+
+        const url =
+          "https://www.google.com/search?q=" +
+          encodeURIComponent(query);
+
+        window.location.href = url;
+      }
+    );
+  </script>
+
+</body>
+</html>
