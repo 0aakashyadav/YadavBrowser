@@ -36,11 +36,30 @@ function createTab(url = "https://www.google.com") {
     }
   });
 
-  view.webContents.on("did-navigate-in-page", (_, newURL) => {
+    view.webContents.on("did-navigate-in-page", (_, newURL) => {
     tab.url = newURL;
 
     if (tabs[activeTab] === tab) {
       sendAddressUpdate(newURL);
+    }
+  });
+
+  // Keyboard shortcuts inside the BrowserView
+  view.webContents.on("before-input-event", (event, input) => {
+    if (
+      input.type === "keyDown" &&
+      input.control &&
+      input.key.toLowerCase() === "t"
+    ) {
+      event.preventDefault();
+
+      const newTab = createTab();
+
+      activeTab = tabs.length - 1;
+
+      updateActiveView();
+      sendTabUpdate();
+      sendAddressUpdate(newTab.url);
     }
   });
 
