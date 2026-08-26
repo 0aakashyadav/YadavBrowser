@@ -12,11 +12,12 @@ on:
 
 permissions:
   contents: write
+  pull-requests: write
 
 jobs:
   autonomous-engineer:
     runs-on: windows-latest
-    if: ${{ secrets.GEMINI_API_KEY != '' }}
+    if: ${{ github.event_name == 'workflow_dispatch' || vars.YB_AUTONOMY_ENABLED == 'true' }}
     steps:
       - name: Checkout main
         uses: actions/checkout@v4
