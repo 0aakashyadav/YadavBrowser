@@ -1,859 +1,1813 @@
 <!DOCTYPE html>
 <html lang="en">
-
 <head>
-  <meta charset="UTF-8">
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
 
-  <meta
-    name="viewport"
-    content="width=device-width, initial-scale=1.0"
-  >
+<title>YadavBrowser</title>
 
-  <title>YadavBrowser</title>
+<style>
 
-  <style>
+* {
+    box-sizing: border-box;
+}
 
-    /* =========================
-       GLOBAL
-    ========================= */
+html,
+body {
+    width: 100%;
+    height: 100%;
+    margin: 0;
+    padding: 0;
+    overflow: hidden;
+}
 
-    * {
-      box-sizing: border-box;
-    }
+body {
+    font-family: Arial, sans-serif;
+    background: #202124;
+    color: white;
+}
 
-    html,
-    body {
-      width: 100%;
-      height: 100%;
-      margin: 0;
-      padding: 0;
-      overflow: hidden;
-    }
+/* =========================================================
+   TABS
+========================================================= */
 
-    body {
-      font-family: Arial, sans-serif;
-      background: #202124;
-      color: white;
-    }
+.tabs {
+    height: 38px;
+    width: 100%;
 
+    display: flex;
+    align-items: center;
 
-    /* =========================
-       TAB BAR
-    ========================= */
+    background: #202124;
 
-    .tabs {
-      height: 38px;
+    padding: 3px 8px;
 
-      width: 100%;
+    gap: 4px;
 
-      display: flex;
-      align-items: center;
+    overflow-x: auto;
+    overflow-y: hidden;
 
-      background: #202124;
+    white-space: nowrap;
+}
 
-      padding: 3px 8px 3px 8px;
+.tabs::-webkit-scrollbar {
+    height: 4px;
+}
 
-      gap: 4px;
+.tabs::-webkit-scrollbar-track {
+    background: #202124;
+}
 
-      overflow-x: auto;
-      overflow-y: hidden;
+.tabs::-webkit-scrollbar-thumb {
+    background: #55585c;
+    border-radius: 10px;
+}
 
-      white-space: nowrap;
-    }
+/* =========================================================
+   TAB
+========================================================= */
 
+.tab {
+    height: 32px;
 
-    .tabs::-webkit-scrollbar {
-      height: 4px;
-    }
+    min-width: 150px;
+    max-width: 220px;
 
+    flex-shrink: 0;
 
-    .tabs::-webkit-scrollbar-track {
-      background: #202124;
-    }
+    padding: 0 8px 0 12px;
 
+    display: flex;
+    align-items: center;
 
-    .tabs::-webkit-scrollbar-thumb {
-      background: #55585c;
-      border-radius: 10px;
-    }
+    background: #292a2d;
 
+    border-radius: 8px 8px 0 0;
 
-    /* =========================
-       TAB
-    ========================= */
+    cursor: pointer;
 
-    .tab {
-      height: 32px;
+    font-size: 13px;
 
-      min-width: 150px;
-      max-width: 220px;
+    user-select: none;
 
-      flex-shrink: 0;
+    transition:
+        background .15s ease;
+}
 
-      padding: 0 8px 0 12px;
+.tab:hover {
+    background: #35363a;
+}
 
-      display: flex;
-      align-items: center;
+.tab.active {
+    background: #3c4043;
+}
 
-      background: #292a2d;
+.tab.private {
+    background: #34283f;
+}
 
-      border-radius: 8px 8px 0 0;
+.tab.private.active {
+    background: #49365a;
+}
 
-      cursor: pointer;
+/* =========================================================
+   TAB TITLE
+========================================================= */
 
-      font-size: 13px;
+.tab-title {
+    flex: 1;
 
-      user-select: none;
+    min-width: 0;
 
-      transition:
-        background 0.15s ease;
-    }
+    overflow: hidden;
 
+    white-space: nowrap;
 
-    .tab:hover {
-      background: #35363a;
-    }
+    text-overflow: ellipsis;
+}
 
+/* =========================================================
+   PRIVATE ICON
+========================================================= */
 
-    .tab.active {
-      background: #3c4043;
-    }
+.private-icon {
+    margin-right: 6px;
 
+    font-size: 12px;
 
-    /* =========================
-       TAB TITLE
-    ========================= */
+    opacity: .9;
+}
 
-    .tab-title {
-      flex: 1;
+/* =========================================================
+   CLOSE TAB
+========================================================= */
 
-      min-width: 0;
+.close-tab {
+    width: 24px;
+    height: 24px;
 
-      overflow: hidden;
+    flex-shrink: 0;
 
-      white-space: nowrap;
+    margin-left: 6px;
 
-      text-overflow: ellipsis;
-    }
+    display: flex;
+    align-items: center;
+    justify-content: center;
 
+    border-radius: 50%;
 
-    /* =========================
-       CLOSE TAB
-    ========================= */
+    font-size: 17px;
 
-    .close-tab {
-      width: 24px;
-      height: 24px;
+    cursor: pointer;
 
-      flex-shrink: 0;
+    color: #ddd;
+}
 
-      margin-left: 6px;
+.close-tab:hover {
+    background: #55585c;
+    color: white;
+}
 
-      display: flex;
-      align-items: center;
-      justify-content: center;
+/* =========================================================
+   NEW TAB
+========================================================= */
 
-      border-radius: 50%;
+#newTab {
+    width: 32px;
+    height: 32px;
 
-      font-size: 17px;
+    flex-shrink: 0;
 
-      cursor: pointer;
+    display: flex;
+    align-items: center;
+    justify-content: center;
 
-      color: #ddd;
-    }
+    border: none;
 
+    border-radius: 8px;
 
-    .close-tab:hover {
-      background: #55585c;
+    background: transparent;
 
-      color: white;
-    }
+    color: white;
 
+    font-size: 23px;
 
-    /* =========================
-       NEW TAB BUTTON
-    ========================= */
+    line-height: 1;
 
-    #newTab {
-      width: 32px;
-      height: 32px;
+    cursor: pointer;
+}
 
-      flex-shrink: 0;
+#newTab:hover {
+    background: #3c4043;
+}
 
-      display: flex;
-      align-items: center;
-      justify-content: center;
+/* =========================================================
+   TOOLBAR
+========================================================= */
 
-      border: none;
+.toolbar {
+    width: 100%;
+    height: 70px;
 
-      border-radius: 8px;
+    display: flex;
+    align-items: center;
 
-      background: transparent;
+    gap: 8px;
 
-      color: white;
+    padding: 10px;
 
-      font-size: 23px;
+    background: #292a2d;
+}
 
-      line-height: 1;
+/* =========================================================
+   LOGO
+========================================================= */
 
-      cursor: pointer;
+.logo {
+    width: 42px;
+    height: 42px;
 
-      user-select: none;
-    }
+    flex-shrink: 0;
 
+    display: flex;
+    align-items: center;
+    justify-content: center;
 
-    #newTab:hover {
-      background: #3c4043;
-    }
+    overflow: hidden;
 
-
-    #newTab:active {
-      background: #55585c;
-    }
-
-
-    /* =========================
-       TOOLBAR
-    ========================= */
-
-    .toolbar {
-      width: 100%;
-
-      height: 70px;
-
-      display: flex;
-      align-items: center;
-
-      gap: 8px;
-
-      padding: 10px;
-
-      background: #292a2d;
-    }
-
-
-    /* =========================
-       LOGO
-    ========================= */
-
-   .logo {
-  width: 42px;
-  height: 42px;
-  flex-shrink: 0;
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  overflow: hidden;
-  user-select: none;
+    user-select: none;
 }
 
 .logo img {
-  width: 42px;
-  height: 42px;
-  object-fit: cover;
-  border-radius: 50%;
+    width: 42px;
+    height: 42px;
+
+    object-fit: cover;
+
+    border-radius: 50%;
 }
 
+/* =========================================================
+   TOOLBAR BUTTONS
+========================================================= */
 
-    /* =========================
-       TOOLBAR BUTTONS
-    ========================= */
+.toolbar button {
+    width: 42px;
+    height: 42px;
 
-    .toolbar button {
-      width: 42px;
-      height: 42px;
+    flex-shrink: 0;
 
-      flex-shrink: 0;
+    border: none;
 
-      border: none;
+    border-radius: 8px;
 
-      border-radius: 8px;
+    background: #3c4043;
 
-      background: #3c4043;
+    color: white;
 
-      color: white;
+    font-size: 19px;
 
-      font-size: 20px;
+    cursor: pointer;
 
-      cursor: pointer;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+}
 
-      display: flex;
-      align-items: center;
-      justify-content: center;
-    }
+.toolbar button:hover {
+    background: #55585c;
+}
 
+.toolbar button:active {
+    background: #686b70;
+}
 
-    .toolbar button:hover {
-      background: #55585c;
-    }
+/* =========================================================
+   ADDRESS BAR
+========================================================= */
 
+#address {
+    flex: 1;
 
-    .toolbar button:active {
-      background: #686b70;
-    }
+    min-width: 100px;
 
+    height: 42px;
 
-    /* =========================
-       ADDRESS BAR
-    ========================= */
+    padding: 0 18px;
 
-    #address {
-      flex: 1;
+    border: none;
 
-      min-width: 100px;
+    border-radius: 22px;
 
-      height: 42px;
+    outline: none;
 
-      padding: 0 18px;
+    font-size: 15px;
 
-      border: none;
+    background: #f1f3f4;
 
-      border-radius: 22px;
+    color: #202124;
+}
 
-      outline: none;
-
-      font-size: 15px;
-
-      background: #f1f3f4;
-
-      color: #202124;
-    }
-
-
-    #address:focus {
-      box-shadow:
+#address:focus {
+    box-shadow:
         0 0 0 2px #8ab4f8;
-    }
+}
 
+/* =========================================================
+   BOOKMARK ACTIVE
+========================================================= */
 
-    #address::placeholder {
-      color: #666;
-    }
+#bookmark.active {
+    color: #ffd54f;
+}
 
+/* =========================================================
+   PANELS
+========================================================= */
 
-    /* =========================
-       RESPONSIVE
-    ========================= */
+.panel {
+    position: fixed;
 
-    @media (max-width: 600px) {
+    top: 108px;
 
-      .tab {
+    right: 12px;
+
+    width: 360px;
+
+    max-height: calc(100vh - 125px);
+
+    overflow-y: auto;
+
+    background: #292a2d;
+
+    border: 1px solid #4a4c50;
+
+    border-radius: 12px;
+
+    box-shadow:
+        0 15px 45px rgba(0,0,0,.45);
+
+    z-index: 10000;
+
+    display: none;
+}
+
+.panel.open {
+    display: block;
+}
+
+.panel-header {
+    position: sticky;
+
+    top: 0;
+
+    display: flex;
+
+    align-items: center;
+
+    justify-content: space-between;
+
+    padding: 14px 16px;
+
+    background: #292a2d;
+
+    border-bottom: 1px solid #444;
+
+    z-index: 2;
+}
+
+.panel-header strong {
+    font-size: 16px;
+}
+
+.panel-header button {
+    border: none;
+
+    background: transparent;
+
+    color: #ddd;
+
+    font-size: 18px;
+
+    cursor: pointer;
+}
+
+.panel-header button:hover {
+    color: white;
+}
+
+.panel-actions {
+    display: flex;
+
+    gap: 8px;
+
+    padding: 10px 14px;
+
+    border-bottom: 1px solid #3d3f42;
+}
+
+.panel-actions button {
+    border: 1px solid #555;
+
+    background: #3c4043;
+
+    color: white;
+
+    border-radius: 7px;
+
+    padding: 7px 10px;
+
+    cursor: pointer;
+}
+
+.panel-actions button:hover {
+    background: #55585c;
+}
+
+/* =========================================================
+   PANEL ITEM
+========================================================= */
+
+.panel-item {
+    padding: 11px 14px;
+
+    border-bottom: 1px solid #3b3d40;
+
+    cursor: pointer;
+
+    display: flex;
+
+    gap: 10px;
+
+    align-items: center;
+}
+
+.panel-item:hover {
+    background: #35363a;
+}
+
+.panel-item-content {
+    flex: 1;
+
+    min-width: 0;
+}
+
+.panel-item-title {
+    font-size: 13px;
+
+    white-space: nowrap;
+
+    overflow: hidden;
+
+    text-overflow: ellipsis;
+}
+
+.panel-item-url {
+    margin-top: 4px;
+
+    font-size: 11px;
+
+    color: #9aa0a6;
+
+    white-space: nowrap;
+
+    overflow: hidden;
+
+    text-overflow: ellipsis;
+}
+
+.panel-item-remove {
+    border: none;
+
+    background: transparent;
+
+    color: #aaa;
+
+    cursor: pointer;
+
+    font-size: 16px;
+}
+
+.panel-item-remove:hover {
+    color: #fff;
+}
+
+/* =========================================================
+   EMPTY STATE
+========================================================= */
+
+.empty {
+    padding: 30px 20px;
+
+    text-align: center;
+
+    color: #9aa0a6;
+
+    font-size: 13px;
+}
+
+/* =========================================================
+   DOWNLOAD TOAST
+========================================================= */
+
+.download-toast {
+    position: fixed;
+
+    right: 16px;
+
+    bottom: 18px;
+
+    max-width: 360px;
+
+    padding: 12px 16px;
+
+    background: #292a2d;
+
+    border: 1px solid #555;
+
+    border-radius: 10px;
+
+    box-shadow:
+        0 10px 30px rgba(0,0,0,.4);
+
+    z-index: 20000;
+
+    display: none;
+}
+
+.download-toast.show {
+    display: block;
+}
+
+.download-title {
+    font-size: 13px;
+
+    font-weight: bold;
+}
+
+.download-status {
+    margin-top: 4px;
+
+    font-size: 11px;
+
+    color: #aaa;
+}
+
+/* =========================================================
+   PRIVATE MODE BAR
+========================================================= */
+
+.private-mode {
+    display: none;
+
+    height: 24px;
+
+    align-items: center;
+
+    justify-content: center;
+
+    background: #49365a;
+
+    color: #eadcff;
+
+    font-size: 11px;
+}
+
+.private-mode.show {
+    display: flex;
+}
+
+/* =========================================================
+   RESPONSIVE
+========================================================= */
+
+@media (max-width: 700px) {
+
+    .tab {
         min-width: 120px;
         max-width: 180px;
-      }
-
-      .logo {
-        display: none;
-      }
-
-      .toolbar {
-        gap: 5px;
-        padding: 8px;
-      }
-
-      .toolbar button {
-        width: 38px;
-        height: 38px;
-      }
-
-      #address {
-        height: 38px;
-        font-size: 14px;
-      }
-
     }
 
-  </style>
+    .logo {
+        display: none;
+    }
 
+    .toolbar {
+        gap: 5px;
+        padding: 8px;
+    }
+
+    .toolbar button {
+        width: 38px;
+        height: 38px;
+    }
+
+    #address {
+        height: 38px;
+        font-size: 14px;
+    }
+
+    .panel {
+        left: 10px;
+        right: 10px;
+
+        width: auto;
+    }
+}
+
+</style>
 </head>
-
 
 <body>
 
+<!-- =======================================================
+     TABS
+======================================================== -->
 
-  <!-- =====================================================
-       TAB BAR
-  ====================================================== -->
-
-  <div
+<div
     class="tabs"
     id="tabs"
-  >
-
-    <!-- Tabs are inserted here by JavaScript -->
+>
 
     <button
-      id="newTab"
-      title="New Tab"
-      aria-label="New Tab"
+        id="newTab"
+        title="New Tab"
+        aria-label="New Tab"
     >
-      +
+        +
     </button>
 
-  </div>
-
-
-  <!-- =====================================================
-       TOOLBAR
-  ====================================================== -->
-
-  <div class="toolbar">
-
-    <!-- Logo -->
-
-   <div class="logo">
-  <img src="logo.png" alt="YadavBrowser">
 </div>
 
+<!-- =======================================================
+     TOOLBAR
+======================================================== -->
 
-    <!-- Back -->
+<div class="toolbar">
 
-    <button
-      id="back"
-      title="Back"
-      aria-label="Back"
-    >
-      ←
-    </button>
-
-
-    <!-- Forward -->
-
-    <button
-      id="forward"
-      title="Forward"
-      aria-label="Forward"
-    >
-      →
-    </button>
-
-
-    <!-- Reload -->
+    <div class="logo">
+        <img
+            src="logo.png"
+            alt="YadavBrowser"
+        >
+    </div>
 
     <button
-      id="reload"
-      title="Reload"
-      aria-label="Reload"
+        id="back"
+        title="Back"
+        aria-label="Back"
     >
-      ⟳
+        ←
     </button>
 
+    <button
+        id="forward"
+        title="Forward"
+        aria-label="Forward"
+    >
+        →
+    </button>
 
-    <!-- Address -->
+    <button
+        id="reload"
+        title="Reload"
+        aria-label="Reload"
+    >
+        ⟳
+    </button>
 
     <input
-      id="address"
-      type="text"
-      placeholder="Search or enter website"
-      autocomplete="off"
-      autocorrect="off"
-      autocapitalize="off"
-      spellcheck="false"
+        id="address"
+        type="text"
+        placeholder="Search or enter website"
+        autocomplete="off"
+        autocorrect="off"
+        autocapitalize="off"
+        spellcheck="false"
     >
 
-  </div>
+    <button
+        id="bookmark"
+        title="Bookmark"
+        aria-label="Bookmark"
+    >
+        ☆
+    </button>
 
+    <button
+        id="history"
+        title="History"
+        aria-label="History"
+    >
+        🕘
+    </button>
 
-  <!-- =====================================================
-       JAVASCRIPT
-  ====================================================== -->
+    <button
+        id="bookmarks"
+        title="Bookmarks"
+        aria-label="Bookmarks"
+    >
+        🔖
+    </button>
 
-  <script>
+    <button
+        id="private"
+        title="New Private Tab"
+        aria-label="New Private Tab"
+    >
+        🕵️
+    </button>
 
+</div>
 
-    /* =====================================================
-       ELEMENTS
-    ====================================================== */
+<!-- =======================================================
+     HISTORY PANEL
+======================================================== -->
 
-    const tabsContainer =
-      document.getElementById("tabs");
+<div
+    class="panel"
+    id="historyPanel"
+>
 
-    const newTabButton =
-      document.getElementById("newTab");
+    <div class="panel-header">
 
-    const address =
-      document.getElementById("address");
+        <strong>
+            History
+        </strong>
 
-    const backButton =
-      document.getElementById("back");
+        <button
+            id="closeHistory"
+        >
+            ×
+        </button>
 
-    const forwardButton =
-      document.getElementById("forward");
+    </div>
 
-    const reloadButton =
-      document.getElementById("reload");
+    <div class="panel-actions">
 
+        <button
+            id="clearHistory"
+        >
+            Clear history
+        </button>
 
-    /* =====================================================
-       ADDRESS BAR
-    ====================================================== */
+    </div>
 
-    function handleAddress(event) {
+    <div
+        id="historyList"
+    ></div>
 
-      if (event.key !== "Enter") {
+</div>
+
+<!-- =======================================================
+     BOOKMARK PANEL
+======================================================== -->
+
+<div
+    class="panel"
+    id="bookmarksPanel"
+>
+
+    <div class="panel-header">
+
+        <strong>
+            Bookmarks
+        </strong>
+
+        <button
+            id="closeBookmarks"
+        >
+            ×
+        </button>
+
+    </div>
+
+    <div
+        id="bookmarksList"
+    ></div>
+
+</div>
+
+<!-- =======================================================
+     DOWNLOAD TOAST
+======================================================== -->
+
+<div
+    class="download-toast"
+    id="downloadToast"
+>
+
+    <div
+        class="download-title"
+        id="downloadTitle"
+    >
+        Download
+    </div>
+
+    <div
+        class="download-status"
+        id="downloadStatus"
+    >
+        Starting...
+    </div>
+
+</div>
+
+<!-- =======================================================
+     JAVASCRIPT
+======================================================== -->
+
+<script>
+
+/* =========================================================
+   ELEMENTS
+========================================================= */
+
+const tabsContainer =
+    document.getElementById(
+        "tabs"
+    );
+
+const newTabButton =
+    document.getElementById(
+        "newTab"
+    );
+
+const address =
+    document.getElementById(
+        "address"
+    );
+
+const backButton =
+    document.getElementById(
+        "back"
+    );
+
+const forwardButton =
+    document.getElementById(
+        "forward"
+    );
+
+const reloadButton =
+    document.getElementById(
+        "reload"
+    );
+
+const bookmarkButton =
+    document.getElementById(
+        "bookmark"
+    );
+
+const historyButton =
+    document.getElementById(
+        "history"
+    );
+
+const bookmarksButton =
+    document.getElementById(
+        "bookmarks"
+    );
+
+const privateButton =
+    document.getElementById(
+        "private"
+    );
+
+const historyPanel =
+    document.getElementById(
+        "historyPanel"
+    );
+
+const bookmarksPanel =
+    document.getElementById(
+        "bookmarksPanel"
+    );
+
+const historyList =
+    document.getElementById(
+        "historyList"
+    );
+
+const bookmarksList =
+    document.getElementById(
+        "bookmarksList"
+    );
+
+/* =========================================================
+   ADDRESS BAR
+========================================================= */
+
+function handleAddress(event) {
+
+    if (
+        event.key !==
+        "Enter"
+    ) {
         return;
-      }
+    }
 
-
-      const input =
+    const input =
         address.value.trim();
 
-
-      if (!input) {
+    if (!input) {
         return;
-      }
+    }
 
+    let url =
+        input;
 
-      let url = input;
+    if (
+        url.startsWith(
+            "http://"
+        ) ||
+        url.startsWith(
+            "https://"
+        )
+    ) {
 
+        /* Already a URL */
 
-      /*
-       * Already a URL
-       */
-
-      if (
-        url.startsWith("http://") ||
-        url.startsWith("https://")
-      ) {
-
-        // Keep URL unchanged
-
-      }
-
-
-      /*
-       * Website such as:
-       * google.com
-       * youtube.com
-       */
-
-      else if (
+    } else if (
         url.includes(".") &&
         !url.includes(" ")
-      ) {
+    ) {
 
         url =
-          "https://" + url;
+            "https://" +
+            url;
 
-      }
-
-
-      /*
-       * Everything else becomes
-       * a Google search
-       */
-
-      else {
+    } else {
 
         url =
-          "https://www.google.com/search?q=" +
-          encodeURIComponent(url);
-
-      }
-
-
-      window.browserAPI.navigate(url);
-
-    }
-
-
-    /* =====================================================
-       BACK
-    ====================================================== */
-
-    function goBack() {
-
-      window.browserAPI.back();
-
-    }
-
-
-    /* =====================================================
-       FORWARD
-    ====================================================== */
-
-    function goForward() {
-
-      window.browserAPI.forward();
-
-    }
-
-
-    /* =====================================================
-       RELOAD
-    ====================================================== */
-
-    function reloadPage() {
-
-      window.browserAPI.reload();
-
-    }
-
-
-    /* =====================================================
-       NEW TAB
-    ====================================================== */
-
-    newTabButton.addEventListener(
-      "click",
-      () => {
-
-        window.browserAPI.newTab();
-
-      }
-    );
-
-
-    /* =====================================================
-       BACK BUTTON
-    ====================================================== */
-
-    backButton.addEventListener(
-      "click",
-      goBack
-    );
-
-
-    /* =====================================================
-       FORWARD BUTTON
-    ====================================================== */
-
-    forwardButton.addEventListener(
-      "click",
-      goForward
-    );
-
-
-    /* =====================================================
-       RELOAD BUTTON
-    ====================================================== */
-
-    reloadButton.addEventListener(
-      "click",
-      reloadPage
-    );
-
-
-    /* =====================================================
-       ADDRESS ENTER
-    ====================================================== */
-
-    address.addEventListener(
-      "keydown",
-      handleAddress
-    );
-
-
-    /* =====================================================
-       TAB UPDATE
-    ====================================================== */
-
-    window.browserAPI.onTabUpdate(
-      (data) => {
-
-        /*
-         * Remove old tabs.
-         *
-         * IMPORTANT:
-         * Don't remove the + button.
-         */
-
-        const oldTabs =
-          tabsContainer.querySelectorAll(".tab");
-
-
-        oldTabs.forEach(
-          (tab) => tab.remove()
-        );
-
-
-        /*
-         * Create tabs again
-         */
-
-        data.tabs.forEach(
-          (tab, index) => {
-
-            const tabElement =
-              document.createElement("div");
-
-
-            tabElement.className =
-              "tab";
-
-
-            /*
-             * Active tab
-             */
-
-            if (
-              index === data.activeIndex
-            ) {
-
-              tabElement.classList.add(
-                "active"
-              );
-
-            }
-
-
-            /* =========================
-               TAB TITLE
-            ========================= */
-
-            const title =
-              document.createElement("span");
-
-
-            title.className =
-              "tab-title";
-
-
-            title.textContent =
-              tab.title || "New Tab";
-
-
-            title.title =
-              tab.title || "New Tab";
-
-
-            /* =========================
-               CLOSE BUTTON
-            ========================= */
-
-            const close =
-              document.createElement("span");
-
-
-            close.className =
-              "close-tab";
-
-
-            close.textContent =
-              "×";
-
-
-            close.title =
-              "Close tab";
-
-
-            /*
-             * Close tab
-             */
-
-            close.addEventListener(
-              "click",
-              (event) => {
-
-                event.stopPropagation();
-
-                window.browserAPI.closeTab();
-
-              }
+            "https://www.google.com/search?q=" +
+            encodeURIComponent(
+                url
             );
 
+    }
 
-            /* =========================
-               CLICK TAB
-            ========================= */
+    window.browserAPI.navigate(
+        url
+    );
+}
 
-            tabElement.addEventListener(
-              "click",
-              () => {
+/* =========================================================
+   BASIC CONTROLS
+========================================================= */
 
-                window.browserAPI.switchTab(
-                  index
+backButton.addEventListener(
+    "click",
+    () => {
+        window.browserAPI.back();
+    }
+);
+
+forwardButton.addEventListener(
+    "click",
+    () => {
+        window.browserAPI.forward();
+    }
+);
+
+reloadButton.addEventListener(
+    "click",
+    () => {
+        window.browserAPI.reload();
+    }
+);
+
+newTabButton.addEventListener(
+    "click",
+    () => {
+        window.browserAPI.newTab();
+    }
+);
+
+let privateTabBusy = false;
+
+privateButton.addEventListener("click", (event) => {
+    event.preventDefault();
+    event.stopPropagation();
+
+    if (privateTabBusy) {
+        return;
+    }
+
+    privateTabBusy = true;
+
+    window.browserAPI.newPrivateTab();
+
+    setTimeout(() => {
+        privateTabBusy = false;
+    }, 700);
+});
+
+address.addEventListener(
+    "keydown",
+    handleAddress
+);
+
+address.addEventListener(
+    "focus",
+    () => {
+        address.select();
+    }
+);
+
+/* =========================================================
+   BOOKMARK BUTTON
+========================================================= */
+
+bookmarkButton.addEventListener(
+    "click",
+    async () => {
+
+        const result =
+            await window.browserAPI
+                .toggleBookmark();
+
+        if (
+            result &&
+            result.reason ===
+                "private-tab"
+        ) {
+            return;
+        }
+
+        updateBookmarkButton();
+
+    }
+);
+
+async function updateBookmarkButton() {
+
+    const bookmarks =
+        await window.browserAPI
+            .getBookmarks();
+
+    const current =
+        address.value;
+
+    const found =
+        bookmarks.some(
+            bookmark =>
+                bookmark.url ===
+                current
+        );
+
+    bookmarkButton.textContent =
+        found
+            ? "★"
+            : "☆";
+
+    bookmarkButton.classList.toggle(
+        "active",
+        found
+    );
+}
+
+/* =========================================================
+   HISTORY
+========================================================= */
+
+historyButton.addEventListener(
+    "click",
+    async () => {
+
+        closeBookmarksPanel();
+
+        const data =
+            await window.browserAPI
+                .getHistory();
+
+        renderHistory(
+            data
+        );
+
+        historyPanel.classList.toggle(
+            "open"
+        );
+
+    }
+);
+
+document
+    .getElementById(
+        "closeHistory"
+    )
+    .addEventListener(
+        "click",
+        () => {
+            closeHistoryPanel();
+        }
+    );
+
+function closeHistoryPanel() {
+
+    historyPanel.classList.remove(
+        "open"
+    );
+
+}
+
+function renderHistory(
+    items
+) {
+
+    historyList.innerHTML =
+        "";
+
+    if (
+        !items ||
+        items.length === 0
+    ) {
+
+        historyList.innerHTML =
+            `
+            <div class="empty">
+                No browsing history yet.
+            </div>
+            `;
+
+        return;
+    }
+
+    items.forEach(
+        item => {
+
+            const row =
+                document.createElement(
+                    "div"
                 );
 
-              }
+            row.className =
+                "panel-item";
+
+            const content =
+                document.createElement(
+                    "div"
+                );
+
+            content.className =
+                "panel-item-content";
+
+            const title =
+                document.createElement(
+                    "div"
+                );
+
+            title.className =
+                "panel-item-title";
+
+            title.textContent =
+                item.title ||
+                item.url;
+
+            const url =
+                document.createElement(
+                    "div"
+                );
+
+            url.className =
+                "panel-item-url";
+
+            url.textContent =
+                item.url;
+
+            content.appendChild(
+                title
             );
 
-
-            /* =========================
-               ADD CONTENT
-            ========================= */
-
-            tabElement.appendChild(
-              title
+            content.appendChild(
+                url
             );
 
-            tabElement.appendChild(
-              close
+            row.appendChild(
+                content
             );
 
+            row.addEventListener(
+                "click",
+                () => {
 
-            /*
-             * Insert BEFORE + button
-             */
+                    window.browserAPI
+                        .navigate(
+                            item.url
+                        );
 
-            tabsContainer.insertBefore(
-              tabElement,
-              newTabButton
+                    closeHistoryPanel();
+
+                }
             );
 
-          }
+            historyList.appendChild(
+                row
+            );
+
+        }
+    );
+
+}
+
+/* =========================================================
+   CLEAR HISTORY
+========================================================= */
+
+document
+    .getElementById(
+        "clearHistory"
+    )
+    .addEventListener(
+        "click",
+        async () => {
+
+            await window.browserAPI
+                .clearHistory();
+
+            renderHistory(
+                []
+            );
+
+        }
+    );
+
+/* =========================================================
+   BOOKMARKS PANEL
+========================================================= */
+
+bookmarksButton.addEventListener(
+    "click",
+    async () => {
+
+        closeHistoryPanel();
+
+        const data =
+            await window.browserAPI
+                .getBookmarks();
+
+        renderBookmarks(
+            data
         );
 
+        bookmarksPanel.classList.toggle(
+            "open"
+        );
 
-        /*
-         * Keep active tab visible
-         */
+    }
+);
+
+document
+    .getElementById(
+        "closeBookmarks"
+    )
+    .addEventListener(
+        "click",
+        () => {
+            closeBookmarksPanel();
+        }
+    );
+
+function closeBookmarksPanel() {
+
+    bookmarksPanel.classList.remove(
+        "open"
+    );
+
+}
+
+function renderBookmarks(
+    items
+) {
+
+    bookmarksList.innerHTML =
+        "";
+
+    if (
+        !items ||
+        items.length === 0
+    ) {
+
+        bookmarksList.innerHTML =
+            `
+            <div class="empty">
+                No bookmarks yet.
+                <br>
+                Press ☆ to bookmark a page.
+            </div>
+            `;
+
+        return;
+    }
+
+    items.forEach(
+        item => {
+
+            const row =
+                document.createElement(
+                    "div"
+                );
+
+            row.className =
+                "panel-item";
+
+            const content =
+                document.createElement(
+                    "div"
+                );
+
+            content.className =
+                "panel-item-content";
+
+            const title =
+                document.createElement(
+                    "div"
+                );
+
+            title.className =
+                "panel-item-title";
+
+            title.textContent =
+                item.title ||
+                item.url;
+
+            const url =
+                document.createElement(
+                    "div"
+                );
+
+            url.className =
+                "panel-item-url";
+
+            url.textContent =
+                item.url;
+
+            content.appendChild(
+                title
+            );
+
+            content.appendChild(
+                url
+            );
+
+            const remove =
+                document.createElement(
+                    "button"
+                );
+
+            remove.className =
+                "panel-item-remove";
+
+            remove.textContent =
+                "×";
+
+            remove.title =
+                "Remove bookmark";
+
+            remove.addEventListener(
+                "click",
+                async event => {
+
+                    event.stopPropagation();
+
+                    await window.browserAPI
+                        .removeBookmark(
+                            item.url
+                        );
+
+                    const updated =
+                        await window.browserAPI
+                            .getBookmarks();
+
+                    renderBookmarks(
+                        updated
+                    );
+
+                    updateBookmarkButton();
+
+                }
+            );
+
+            row.appendChild(
+                content
+            );
+
+            row.appendChild(
+                remove
+            );
+
+            row.addEventListener(
+                "click",
+                () => {
+
+                    window.browserAPI
+                        .navigate(
+                            item.url
+                        );
+
+                    closeBookmarksPanel();
+
+                }
+            );
+
+            bookmarksList.appendChild(
+                row
+            );
+
+        }
+    );
+
+}
+
+/* =========================================================
+   TAB UPDATE
+========================================================= */
+
+window.browserAPI.onTabUpdate(
+    data => {
+
+        const oldTabs =
+            tabsContainer
+                .querySelectorAll(
+                    ".tab"
+                );
+
+        oldTabs.forEach(
+            tab =>
+                tab.remove()
+        );
+
+        data.tabs.forEach(
+            (tab, index) => {
+
+                const tabElement =
+                    document.createElement(
+                        "div"
+                    );
+
+                tabElement.className =
+                    "tab";
+
+                if (
+                    index ===
+                    data.activeIndex
+                ) {
+
+                    tabElement.classList.add(
+                        "active"
+                    );
+
+                }
+
+                if (
+                    tab.private
+                ) {
+
+                    tabElement.classList.add(
+                        "private"
+                    );
+
+                }
+
+                /* Private icon */
+
+                if (
+                    tab.private
+                ) {
+
+                    const icon =
+                        document.createElement(
+                            "span"
+                        );
+
+                    icon.className =
+                        "private-icon";
+
+                    icon.textContent =
+                        "🕵️";
+
+                    tabElement.appendChild(
+                        icon
+                    );
+
+                }
+
+                /* Title */
+
+                const title =
+                    document.createElement(
+                        "span"
+                    );
+
+                title.className =
+                    "tab-title";
+
+                title.textContent =
+                    tab.title ||
+                    "New Tab";
+
+                title.title =
+                    tab.title ||
+                    "New Tab";
+
+                /* Close */
+
+                const close =
+                    document.createElement(
+                        "span"
+                    );
+
+                close.className =
+                    "close-tab";
+
+                close.textContent =
+                    "×";
+
+                close.title =
+                    "Close tab";
+
+                close.addEventListener(
+                    "click",
+                    event => {
+
+                        event.stopPropagation();
+
+                        window.browserAPI
+                            .closeTab();
+
+                    }
+                );
+
+                /* Switch */
+
+                tabElement.addEventListener(
+                    "click",
+                    () => {
+
+                        window.browserAPI
+                            .switchTab(
+                                index
+                            );
+
+                    }
+                );
+
+                tabElement.appendChild(
+                    title
+                );
+
+                tabElement.appendChild(
+                    close
+                );
+
+                tabsContainer.insertBefore(
+                    tabElement,
+                    newTabButton
+                );
+
+            }
+        );
 
         const activeElement =
-          tabsContainer.querySelector(
-            ".tab.active"
-          );
+            tabsContainer.querySelector(
+                ".tab.active"
+            );
 
+        if (
+            activeElement
+        ) {
 
-        if (activeElement) {
+            activeElement.scrollIntoView({
+                behavior:
+                    "smooth",
 
-          activeElement.scrollIntoView({
-            behavior: "smooth",
-            block: "nearest",
-            inline: "nearest"
-          });
+                block:
+                    "nearest",
+
+                inline:
+                    "nearest"
+            });
 
         }
 
-      }
-    );
+    }
+);
 
+/* =========================================================
+   ADDRESS UPDATE
+========================================================= */
 
-    /* =====================================================
-       ADDRESS UPDATE
-    ====================================================== */
-
-    window.browserAPI.onAddressUpdate(
-      (url) => {
+window.browserAPI.onAddressUpdate(
+    url => {
 
         address.value =
-          url || "";
+            url || "";
 
-      }
-    );
+        updateBookmarkButton();
 
+    }
+);
 
-    /* =====================================================
-       ADDRESS SELECT ON FOCUS
-    ====================================================== */
+/* =========================================================
+   FOCUS ADDRESS BAR
+========================================================= */
 
-    address.addEventListener(
-      "focus",
-      () => {
+window.browserAPI.onFocusAddressBar(
+    () => {
+
+        address.focus();
 
         address.select();
 
-      }
-    );
-window.browserAPI.onFocusAddressBar(
-  () => {
-    address.focus();
-    address.select();
-  }
+    }
 );
 
-  </script>
+/* =========================================================
+   BOOKMARK STATE
+========================================================= */
+
+window.browserAPI.onBookmarkState(
+    data => {
+
+        bookmarkButton.textContent =
+            data.bookmarked
+                ? "★"
+                : "☆";
+
+        bookmarkButton.classList.toggle(
+            "active",
+            Boolean(
+                data.bookmarked
+            )
+        );
+
+        if (
+            data.private
+        ) {
+
+            bookmarkButton.title =
+                "Bookmarks disabled in Private Tab";
+
+        } else {
+
+            bookmarkButton.title =
+                "Bookmark";
+
+        }
+
+    }
+);
+
+/* =========================================================
+   BOOKMARK UPDATE
+========================================================= */
+
+window.browserAPI.onBookmarksUpdate(
+    data => {
+
+        if (
+            bookmarksPanel.classList.contains(
+                "open"
+            )
+        ) {
+
+            renderBookmarks(
+                data
+            );
+
+        }
+
+        updateBookmarkButton();
+
+    }
+);
+
+/* =========================================================
+   HISTORY UPDATE
+========================================================= */
+
+window.browserAPI.onHistoryUpdate(
+    data => {
+
+        if (
+            historyPanel.classList.contains(
+                "open"
+            )
+        ) {
+
+            renderHistory(
+                data
+            );
+
+        }
+
+    }
+);
+
+/* =========================================================
+   DOWNLOAD UPDATE
+========================================================= */
+
+const downloadToast =
+    document.getElementById(
+        "downloadToast"
+    );
+
+const downloadTitle =
+    document.getElementById(
+        "downloadTitle"
+    );
+
+const downloadStatus =
+    document.getElementById(
+        "downloadStatus"
+    );
+
+let downloadTimer = null;
+
+window.browserAPI.onDownloadUpdate(
+    data => {
+
+        downloadToast.classList.add(
+            "show"
+        );
+
+        downloadTitle.textContent =
+            data.filename ||
+            "Download";
+
+        if (
+            data.state ===
+            "completed"
+        ) {
+
+            downloadStatus.textContent =
+                "Download completed";
+
+        } else if (
+            data.state ===
+            "cancelled"
+        ) {
+
+            downloadStatus.textContent =
+                "Download cancelled";
+
+        } else if (
+            data.state ===
+            "interrupted"
+        ) {
+
+            downloadStatus.textContent =
+                "Download interrupted";
+
+        } else {
+
+            downloadStatus.textContent =
+                "Downloading...";
+
+        }
+
+        clearTimeout(
+            downloadTimer
+        );
+
+        downloadTimer =
+            setTimeout(
+                () => {
+
+                    downloadToast.classList.remove(
+                        "show"
+                    );
+
+                },
+                4000
+            );
+
+    }
+);
+
+/* =========================================================
+   ESCAPE CLOSES PANELS
+========================================================= */
+
+document.addEventListener(
+    "keydown",
+    event => {
+
+        if (
+            event.key ===
+            "Escape"
+        ) {
+
+            closeHistoryPanel();
+
+            closeBookmarksPanel();
+
+        }
+
+    }
+);
+
+</script>
 
 </body>
-
 </html>

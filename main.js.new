@@ -1,0 +1,818 @@
+const {
+  app,
+  BrowserWindow,
+  BrowserView,
+  ipcMain
+} = require("electron");
+
+const path = require("path");
+
+let win = null;
+let tabs = [];
+let activeTab = 0;
+
+const TOOLBAR_HEIGHT = 108;
+
+/* =========================================================
+   CREATE TAB
+========================================================= */
+
+function createTab(url = `file://${path.join(__dirname, "yadav-search.html")}`) {
+  const view = new BrowserView({
+    webPreferences: {
+      contextIsolation: true,
+      nodeIntegration: false
+    }
+  });
+
+  const tab = {
+    view,
+    title: "New Tab",
+    url
+  };
+
+  tabs.push(tab);
+
+  /* -------------------------
+     Load website
+  ------------------------- */
+
+  view.webContents.loadURL(url);
+
+  /* -------------------------
+     Page title
+  ------------------------- */
+
+  view.webContents.on(
+    "page-title-updated",
+    (event, title) => {
+      event.preventDefault();
+
+      tab.title = title || "New Tab";
+
+      sendTabUpdate();
+    }
+  );
+
+  /* -------------------------
+     Normal navigation
+  ------------------------- */
+
+  view.webContents.on(
+    "did-navigate",
+    (_, newURL) => {
+      tab.url = newURL;
+
+      if (tabs[activeTab] === tab) {
+        sendAddressUpdate(newURL);
+        sendTabUpdate();
+      }
+    }
+  );
+
+  /* -------------------------
+     In-page navigation
+  ------------------------- */
+
+  view.webContents.on(
+    "did-navigate-in-page",
+    (_, newURL) => {
+      tab.url = newURL;
+
+      if (tabs[activeTab] === tab) {
+        sendAddressUpdate(newURL);
+        sendTabUpdate();
+      }
+    }
+  );
+
+  /* =======================================================
+     KEYBOARD SHORTCUTS
+     
+     IMPORTANT:
+     These are handled inside the BrowserView because
+     the website has keyboard focus.
+  ======================================================= */
+
+  view.webContents.on(
+    "before-input-event",
+    (event, input) => {
+      if (input.type !== "keyDown") {
+        return;
+      }
+
+      const key = String(input.key || "").toLowerCase();
+
+      /* -------------------------
+         CTRL + T
+         New tab
+      ------------------------- */
+
+      if (input.control && !input.alt && key === "t") {
+        event.preventDefault();
+
+        createNewTab();
+
+        return;
+      }
+
+      /* -------------------------
+         CTRL + W
+         Close current tab
+      ------------------------- */
+
+      if (input.control && !input.alt && key === "w") {
+        event.preventDefault();
+
+        closeActiveTab();
+
+        return;
+      }
+
+      /* -------------------------
+         CTRL + SHIFT + TAB
+         Previous tab
+      ------------------------- */
+
+      if (
+        input.control &&
+        input.shift &&
+        !input.alt &&
+        key === "tab"
+      ) {
+        event.preventDefault();
+
+        switchToPreviousTab();
+
+        return;
+      }
+
+      /* -------------------------
+         CTRL + TAB
+         Next tab
+      ------------------------- */
+
+      if (
+        input.control &&
+        !input.shift &&
+        !input.alt &&
+        key === "tab"
+      ) {
+        event.preventDefault();
+
+        switchToNextTab();
+
+        return;
+      }
+
+      /* -------------------------
+         CTRL + 1 to CTRL + 9
+      ------------------------- */
+
+      if (
+        input.control &&
+        !input.alt &&
+        /^[1-9]$/.test(input.key)
+      ) {
+        event.preventDefault();
+
+        const index = Number(input.key) - 1;
+
+        switchToTab(index);
+
+        return;
+      }
+    }
+  );
+
+  return tab;
+}
+
+/* =========================================================
+   NEW TAB
+========================================================= */
+
+function createNewTab(url = `file://${path.join(__dirname, "yadav-search.html")}`) {
+  const tab = createTab(url);
+
+  activeTab = tabs.length - 1;
+
+  updateActiveView();
+  sendTabUpdate();
+  sendAddressUpdate(tab.url);
+}
+
+/* =========================================================
+   CLOSE ACTIVE TAB
+========================================================= */
+
+function closeActiveTab() {
+  /*
+    NEVER close the YadavBrowser window when there is
+    only one tab.
+
+    This is the important fix for Ctrl + W.
+  */
+
+  if (tabs.length <= 1) {
+    return;
+  }
+
+  const tab = tabs[activeTab];
+
+  if (!tab) {
+    return;
+  }
+
+  try {
+    tab.view.webContents.destroy();
+  } catch (error) {
+    console.error(
+      "Error destroying tab:",
+      error
+    );
+  }
+
+  tabs.splice(activeTab, 1);
+
+  /*
+    If the last tab was closed,
+    move to the new last tab.
+  */
+
+  if (activeTab >= tabs.length) {
+    activeTab = tabs.length - 1;
+  }
+
+  updateActiveView();
+  sendTabUpdate();
+
+  if (tabs[activeTab]) {
+    sendAddressUpdate(
+      tabs[activeTab].url
+    );
+  }
+}
+
+/* =========================================================
+   NEXT TAB
+========================================================= */
+
+function switchToNextTab() {
+  if (tabs.length <= 1) {
+    return;
+  }
+
+  activeTab =
+    (activeTab + 1) % tabs.length;
+
+  updateActiveView();
+  sendTabUpdate();
+
+  sendAddressUpdate(
+    tabs[activeTab].url
+  );
+}
+
+/* =========================================================
+   PREVIOUS TAB
+========================================================= */
+
+function switchToPreviousTab() {
+  if (tabs.length <= 1) {
+    return;
+  }
+
+  activeTab =
+    (activeTab - 1 + tabs.length) %
+    tabs.length;
+
+  updateActiveView();
+  sendTabUpdate();
+
+  sendAddressUpdate(
+    tabs[activeTab].url
+  );
+}
+
+/* =========================================================
+   SWITCH DIRECTLY TO TAB
+========================================================= */
+
+function switchToTab(index) {
+  if (
+    typeof index !== "number" ||
+    index < 0 ||
+    index >= tabs.length
+  ) {
+    return;
+  }
+
+  activeTab = index;
+
+  updateActiveView();
+  sendTabUpdate();
+
+  sendAddressUpdate(
+    tabs[activeTab].url
+  );
+}
+
+/* =========================================================
+   CREATE WINDOW
+========================================================= */
+
+function createWindow() {
+  win = new BrowserWindow({
+    width: 1280,
+    height: 800,
+    minWidth: 800,
+    minHeight: 500,
+
+    title: "YadavBrowser",
+
+    webPreferences: {
+      preload: path.join(
+        __dirname,
+        "preload.js"
+      ),
+
+      contextIsolation: true,
+      nodeIntegration: false
+    }
+  });
+
+  /* -------------------------
+     Create first tab
+  ------------------------- */
+
+  createTab();
+
+  activeTab = 0;
+
+  /* -------------------------
+     Load UI
+  ------------------------- */
+
+  win.loadFile(
+    path.join(__dirname, "index.html")
+  );
+
+  /* -------------------------
+     UI loaded
+  ------------------------- */
+
+  win.webContents.on(
+    "did-finish-load",
+    () => {
+      updateActiveView();
+
+      sendTabUpdate();
+
+      if (tabs[activeTab]) {
+        sendAddressUpdate(
+          tabs[activeTab].url
+        );
+      }
+    }
+  );
+
+  /* -------------------------
+     Resize
+  ------------------------- */
+
+  win.on(
+    "resize",
+    () => {
+      updateViewBounds();
+    }
+  );
+
+  /* =======================================================
+     EXTRA WINDOW-LEVEL SHORTCUT HANDLER
+     
+     This protects shortcuts when the BrowserView is not
+     the focused element.
+  ======================================================= */
+
+  win.webContents.on(
+    "before-input-event",
+    (event, input) => {
+      if (input.type !== "keyDown") {
+        return;
+      }
+
+      const key = String(
+        input.key || ""
+      ).toLowerCase();
+
+      /* CTRL + T */
+
+      if (
+        input.control &&
+        !input.alt &&
+        key === "t"
+      ) {
+        event.preventDefault();
+
+        createNewTab();
+
+        return;
+      }
+
+      /* CTRL + W */
+
+      if (
+        input.control &&
+        !input.alt &&
+        key === "w"
+      ) {
+        event.preventDefault();
+
+        closeActiveTab();
+
+        return;
+      }
+
+      /* CTRL + SHIFT + TAB */
+
+      if (
+        input.control &&
+        input.shift &&
+        !input.alt &&
+        key === "tab"
+      ) {
+        event.preventDefault();
+
+        switchToPreviousTab();
+
+        return;
+      }
+
+      /* CTRL + TAB */
+
+      if (
+        input.control &&
+        !input.shift &&
+        !input.alt &&
+        key === "tab"
+      ) {
+        event.preventDefault();
+
+        switchToNextTab();
+
+        return;
+      }
+
+      /* CTRL + 1-9 */
+
+      if (
+        input.control &&
+        !input.alt &&
+        /^[1-9]$/.test(input.key)
+      ) {
+        event.preventDefault();
+
+        switchToTab(
+          Number(input.key) - 1
+        );
+
+        return;
+      }
+    }
+  );
+
+  /* -------------------------
+     Window close
+  ------------------------- */
+
+  win.on(
+    "closed",
+    () => {
+      win = null;
+    }
+  );
+}
+
+/* =========================================================
+   UPDATE BROWSER VIEW SIZE
+========================================================= */
+
+function updateViewBounds() {
+  if (
+    !win ||
+    win.isDestroyed() ||
+    !tabs[activeTab]
+  ) {
+    return;
+  }
+
+  const [width, height] =
+    win.getContentSize();
+
+  tabs[activeTab].view.setBounds({
+    x: 0,
+    y: TOOLBAR_HEIGHT,
+    width: width,
+    height: Math.max(
+      0,
+      height - TOOLBAR_HEIGHT
+    )
+  });
+}
+
+/* =========================================================
+   UPDATE ACTIVE VIEW
+========================================================= */
+
+function updateActiveView() {
+  if (
+    !win ||
+    win.isDestroyed() ||
+    !tabs[activeTab]
+  ) {
+    return;
+  }
+
+  win.setBrowserView(
+    tabs[activeTab].view
+  );
+
+  updateViewBounds();
+
+  sendAddressUpdate(
+    tabs[activeTab].url
+  );
+}
+
+/* =========================================================
+   SEND TAB UPDATE
+========================================================= */
+
+function sendTabUpdate() {
+  if (
+    !win ||
+    win.isDestroyed()
+  ) {
+    return;
+  }
+
+  win.webContents.send(
+    "tab-update",
+    {
+      activeIndex: activeTab,
+
+      tabs: tabs.map(
+        (tab) => ({
+          title:
+            tab.title || "New Tab",
+
+          url:
+            tab.url || ""
+        })
+      )
+    }
+  );
+}
+
+/* =========================================================
+   SEND ADDRESS UPDATE
+========================================================= */
+
+function sendAddressUpdate(url) {
+  if (
+    !win ||
+    win.isDestroyed()
+  ) {
+    return;
+  }
+
+  win.webContents.send(
+    "address-update",
+    url || ""
+  );
+}
+
+/* =========================================================
+   NAVIGATION
+========================================================= */
+/* =========================================================
+   FOCUS ADDRESS BAR
+========================================================= */
+ipcMain.on(
+  "focus-address-bar",
+  () => {
+    if (
+      !win ||
+      win.isDestroyed()
+    ) {
+      return;
+    }
+
+    win.webContents.send(
+      "focus-address-bar"
+    );
+  }
+);
+ipcMain.on(
+  "navigate",
+  (_, url) => {
+    const tab =
+      tabs[activeTab];
+
+    if (!tab) {
+      return;
+    }
+
+    url = String(url || "").trim();
+
+    if (!url) {
+      return;
+    }
+
+    /*
+      If it is not a URL, search Google.
+    */
+
+    if (
+      !url.startsWith("http://") &&
+      !url.startsWith("https://")
+    ) {
+      if (
+        url.includes(".") &&
+        !url.includes(" ")
+      ) {
+        url =
+          "https://" + url;
+      } else {
+        url =
+          "https://www.google.com/search?q=" +
+          encodeURIComponent(url);
+      }
+    }
+
+    tab.url = url;
+
+    tab.view.webContents.loadURL(
+      url
+    );
+
+    sendAddressUpdate(url);
+  }
+);
+
+/* =========================================================
+   BACK
+========================================================= */
+
+ipcMain.on(
+  "back",
+  () => {
+    const tab =
+      tabs[activeTab];
+
+    if (!tab) {
+      return;
+    }
+
+    if (
+      tab.view.webContents.canGoBack()
+    ) {
+      tab.view.webContents.goBack();
+    }
+  }
+);
+
+/* =========================================================
+   FORWARD
+========================================================= */
+
+ipcMain.on(
+  "forward",
+  () => {
+    const tab =
+      tabs[activeTab];
+
+    if (!tab) {
+      return;
+    }
+
+    if (
+      tab.view.webContents.canGoForward()
+    ) {
+      tab.view.webContents.goForward();
+    }
+  }
+);
+
+/* =========================================================
+   RELOAD
+========================================================= */
+
+ipcMain.on(
+  "reload",
+  () => {
+    const tab =
+      tabs[activeTab];
+
+    if (!tab) {
+      return;
+    }
+
+    tab.view.webContents.reload();
+  }
+);
+
+/* =========================================================
+   NEW TAB FROM UI
+========================================================= */
+
+ipcMain.on(
+  "new-tab",
+  () => {
+    createNewTab();
+  }
+);
+
+/* =========================================================
+   CLOSE TAB FROM UI
+========================================================= */
+
+ipcMain.on(
+  "close-tab",
+  () => {
+    closeActiveTab();
+  }
+);
+
+/* =========================================================
+   SWITCH TAB FROM UI
+========================================================= */
+
+ipcMain.on(
+  "switch-tab",
+  (_, index) => {
+    if (tabs.length === 0) {
+      return;
+    }
+
+    if (index === "next") {
+      switchToNextTab();
+      return;
+    }
+
+    if (index === "previous") {
+      switchToPreviousTab();
+      return;
+    }
+
+    if (
+      typeof index === "number"
+    ) {
+      switchToTab(index);
+    }
+  }
+);
+
+/* =========================================================
+   APP READY
+========================================================= */
+
+app.whenReady().then(
+  () => {
+    createWindow();
+
+    /*
+      macOS:
+      Re-create window if app is activated
+      and no windows exist.
+    */
+
+    app.on(
+      "activate",
+      () => {
+        if (
+          BrowserWindow.getAllWindows()
+            .length === 0
+        ) {
+          createWindow();
+        }
+      }
+    );
+  }
+);
+
+/* =========================================================
+   ALL WINDOWS CLOSED
+========================================================= */
+
+app.on(
+  "window-all-closed",
+  () => {
+    if (
+      process.platform !== "darwin"
+    ) {
+      app.quit();
+    }
+  }
+);
