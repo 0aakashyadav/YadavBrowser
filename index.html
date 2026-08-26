@@ -1,3 +1,4 @@
+<<<<<<< HEAD
 <!DOCTYPE html>
 <html lang="en">
 <head>
@@ -1811,3 +1812,30 @@ document.addEventListener(
 
 </body>
 </html>
+=======
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="UTF-8"><meta name="viewport" content="width=device-width,initial-scale=1"><title>YadavBrowser</title>
+<style>
+*{box-sizing:border-box}html,body{margin:0;width:100%;height:100%;overflow:hidden;font-family:Arial,Helvetica,sans-serif}body{background:#202124;color:#e8eaed}.tabs{height:42px;display:flex;align-items:flex-end;gap:3px;padding:5px 8px 0;background:#202124;overflow:hidden}.tab{height:37px;min-width:150px;max-width:240px;display:flex;align-items:center;padding:0 9px 0 14px;background:#292a2d;border-radius:10px 10px 0 0;cursor:pointer;color:#bdc1c6}.tab.active{background:#35363a;color:#fff}.tab:hover{background:#3c4043}.tab-title{flex:1;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;font-size:13px}.close{width:25px;height:25px;border:0;border-radius:50%;background:transparent;color:#bbb;font-size:17px;cursor:pointer}.close:hover{background:#555;color:#fff}.plus{width:34px;height:34px;border:0;border-radius:50%;background:transparent;color:#eee;font-size:24px;cursor:pointer;margin-bottom:1px}.plus:hover{background:#3c4043}.toolbar{height:66px;display:flex;align-items:center;gap:7px;padding:8px 12px;background:#292a2d}.tool{width:38px;height:38px;border:0;border-radius:50%;background:transparent;color:#e8eaed;font-size:20px;cursor:pointer}.tool:hover{background:#3c4043}.logo{width:34px;height:34px;border-radius:50%;object-fit:cover;margin-right:2px}.address-wrap{height:42px;flex:1;display:flex;align-items:center;background:#3c4043;border-radius:22px;border:1px solid transparent}.address-wrap:focus-within{background:#fff;border-color:#8ab4f8}.security{padding-left:15px;font-size:14px;color:#9aa0a6}.address{flex:1;height:40px;border:0;outline:0;background:transparent;color:#fff;padding:0 12px;font-size:14px}.address-wrap:focus-within .address{color:#202124}.address::placeholder{color:#9aa0a6}.menu{position:fixed;right:12px;top:99px;width:250px;background:#292a2d;border:1px solid #555;border-radius:12px;box-shadow:0 18px 50px #0008;padding:7px;display:none;z-index:100}.menu.open{display:block}.menu button{width:100%;border:0;background:transparent;color:#eee;text-align:left;padding:11px 13px;border-radius:7px;cursor:pointer;font-size:13px}.menu button:hover{background:#3c4043}.divider{height:1px;background:#454545;margin:5px 0}.status{position:fixed;bottom:0;left:0;right:0;height:3px;background:transparent}.status.loading{background:linear-gradient(90deg,#4285f4,#34a853,#fbbc05,#ea4335);animation:load 1s linear infinite}@keyframes load{from{opacity:.35}50%{opacity:1}to{opacity:.35}}@media(max-width:700px){.logo{display:none}.tab{min-width:120px}.toolbar{gap:3px;padding:7px}.tool{width:34px}.address-wrap{min-width:80px}}
+</style>
+</head>
+<body>
+<div class="tabs" id="tabs"><button class="plus" id="newTab" title="New tab">+</button></div>
+<div class="toolbar"><img class="logo" src="logo.png" alt="YadavBrowser"><button class="tool" id="back" title="Back">←</button><button class="tool" id="forward" title="Forward">→</button><button class="tool" id="reload" title="Reload">↻</button><button class="tool" id="home" title="Home">⌂</button><div class="address-wrap"><span class="security" id="security">○</span><input class="address" id="address" placeholder="Search Google or enter a URL" autocomplete="off" spellcheck="false"></div><button class="tool" id="bookmark" title="Bookmark">☆</button><button class="tool" id="menuButton" title="YadavBrowser menu">⋮</button></div>
+<div class="menu" id="menu"><button id="newPrivate">🕵️ New private tab</button><button id="focusAddress">⌕ Search / address bar</button><div class="divider"></div><button id="google">Google Search</button><button id="youtube">YouTube</button><button id="chess">♟ Chess</button><button id="aarya">🤖 AARYA</button><div class="divider"></div><button id="about">About YadavBrowser</button></div>
+<div class="status" id="status"></div>
+<script>
+const $=id=>document.getElementById(id),api=window.browserAPI,tabs=$('tabs'),address=$('address'),menu=$('menu');
+const homeUrl='file://'+location.pathname.replace(/index\.html$/,'yadav-search.html');
+function go(value){let s=value.trim();if(!s)return;if(!/^https?:\/\//i.test(s))s=s.includes('.')&&!s.includes(' ')?'https://'+s:'https://www.google.com/search?q='+encodeURIComponent(s);api.navigate(s)}
+address.addEventListener('keydown',e=>{if(e.key==='Enter')go(address.value)});address.addEventListener('focus',()=>address.select());
+$('back').onclick=()=>api.back();$('forward').onclick=()=>api.forward();$('reload').onclick=()=>api.reload();$('newTab').onclick=()=>api.newTab();$('home').onclick=()=>api.navigate(homeUrl);$('focusAddress').onclick=()=>{menu.classList.remove('open');api.focusAddressBar()};$('menuButton').onclick=e=>{e.stopPropagation();menu.classList.toggle('open')};document.addEventListener('click',e=>{if(!menu.contains(e.target)&&e.target!==$('menuButton'))menu.classList.remove('open')});
+$('google').onclick=()=>{menu.classList.remove('open');api.navigate('https://www.google.com')};$('youtube').onclick=()=>{menu.classList.remove('open');api.navigate('https://www.youtube.com')};$('chess').onclick=()=>{menu.classList.remove('open');api.navigate(homeUrl)};$('about').onclick=()=>{menu.classList.remove('open');api.navigate(homeUrl)};$('newPrivate').onclick=()=>{menu.classList.remove('open');if(typeof api.newPrivateTab==='function')api.newPrivateTab();else alert('Private tabs are being added to the browser engine.')};$('aarya').onclick=()=>{menu.classList.remove('open');const x=document.getElementById('aarya-launcher');if(x)x.click();else alert('AARYA is loading...')};$('bookmark').onclick=()=>{if(typeof api.toggleBookmark==='function')api.toggleBookmark()};
+api.onTabUpdate(data=>{tabs.querySelectorAll('.tab').forEach(x=>x.remove());data.tabs.forEach((t,i)=>{const el=document.createElement('div');el.className='tab'+(i===data.activeIndex?' active':'');const title=document.createElement('span');title.className='tab-title';title.textContent=t.title||'New Tab';const close=document.createElement('button');close.className='close';close.textContent='×';close.onclick=e=>{e.stopPropagation();api.closeTab()};el.onclick=()=>api.switchTab(i);el.append(title,close);tabs.insertBefore(el,$('newTab'))});const active=tabs.querySelector('.active');if(active)active.scrollIntoView({inline:'nearest'})});
+api.onAddressUpdate(url=>{address.value=url||'';const secure=/^https:\/\//i.test(url||'');$('security').textContent=secure?'🔒':'○';$('security').title=secure?'Secure HTTPS connection':'Connection information'});api.onFocusAddressBar(()=>{address.focus();address.select()});
+window.addEventListener('keydown',e=>{if(e.ctrlKey&&!e.altKey&&e.key.toLowerCase()==='l'){e.preventDefault();api.focusAddressBar()}if(e.key==='Escape')menu.classList.remove('open')});
+</script>
+</body></html>
+>>>>>>> 32ec01fbe7349363bf5823060a80820d9c64806b
