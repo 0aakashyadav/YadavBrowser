@@ -1,7 +1,7 @@
 {
   "name": "yadavbrowser",
   "version": "1.0.0",
-  "description": "YadavBrowser - A simple Chromium-based web browser",
+  "description": "YadavBrowser - A Chromium-based browser with autonomous engineering capabilities",
   "main": "aarya/bootstrap.js",
   "author": "Aakash",
   "license": "MIT",
@@ -12,6 +12,8 @@
     "agent:verify": "node agent/cli.js verify",
     "agent:plan": "node agent/cli.js plan",
     "agent:auto": "node agent/cli.js auto",
+    "agent:autonomy": "node agent/cli.js autonomy",
+    "agent:audit": "node agent/cli.js audit",
     "agent:test": "node agent/test.js"
   },
   "devDependencies": {
