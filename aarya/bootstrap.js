@@ -4,6 +4,7 @@ const path = require("node:path");
 
 require("./bridge").installAaryaIPC();
 require("../search/bridge").installSearchIPC();
+require("../agent/ipc").installAgentIPC();
 
 const preloadPath = path.join(__dirname, "preload.js");
 const uiPath = path.join(__dirname, "ui.js");
