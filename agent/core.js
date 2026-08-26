@@ -10,11 +10,8 @@ const { plan } = require('./model');
 function runCommand(args, root) {
   assertCommand(args);
   return execFileSync(args[0], args.slice(1), {
-    cwd: root,
-    encoding: 'utf8',
-    timeout: 30000,
-    maxBuffer: 1024 * 1024 * 4,
-    stdio: ['ignore', 'pipe', 'pipe']
+    cwd: root, encoding: 'utf8', timeout: 30000,
+    maxBuffer: 1024 * 1024 * 4, stdio: ['ignore', 'pipe', 'pipe']
   }).trim();
 }
 
@@ -33,10 +30,8 @@ function inspect(root) {
 
 function verify(root) {
   const results = [];
-  const candidates = files.snapshot(root)
-    .map(x => x.path)
-    .filter(p => p.endsWith('.js'))
-    .slice(0, 150);
+  const candidates = files.snapshot(root).map(x => x.path)
+    .filter(p => p.endsWith('.js')).slice(0, 150);
   for (const target of candidates) {
     try {
       runCommand(['node', '--check', target], root);
@@ -45,11 +40,7 @@ function verify(root) {
       results.push({ target, ok: false, error: error.message });
     }
   }
-  return {
-    ok: results.every(r => r.ok),
-    checked: results.length,
-    failures: results.filter(r => !r.ok)
-  };
+  return { ok: results.every(r => r.ok), checked: results.length, failures: results.filter(r => !r.ok) };
 }
 
 function applyEdit(root, edit) {
@@ -59,28 +50,44 @@ function applyEdit(root, edit) {
   return files.write(root, edit.path, edit.content);
 }
 
+function hasWorkingTreeChange(root) {
+  const status = git.status(root);
+  return status.split('\n').some(line => /^(\s*[MADRCU?!]|\?\?)/.test(line));
+}
+
 async function run(task, options = {}) {
   const root = repoRoot(options.root);
   const session = new AgentSession(root);
   session.start(task);
+  const before = inspect(root);
+  session.observe({ type: 'repository', context: before });
 
-  const context = inspect(root);
-  session.observe({ type: 'repository', context });
-
-  const proposal = await plan(task, context);
-  session.action('plan', { summary: proposal.summary, risks: proposal.risks, steps: proposal.steps });
+  const proposal = await plan(task, before);
+  session.action('plan', {
+    summary: proposal.summary, risks: proposal.risks, steps: proposal.steps,
+    editCount: Array.isArray(proposal.edits) ? proposal.edits.length : 0
+  });
 
   if (options.mode === 'plan') return session.finish('planned');
 
   if (options.mode === 'auto') {
-    if (git.branch(root) === 'main') {
-      throw new Error('YB safety: autonomous mode cannot run directly on main');
-    }
+    if (git.branch(root) === 'main') throw new Error('YB safety: autonomous mode cannot run directly on main');
+
     const edits = Array.isArray(proposal.edits) ? proposal.edits.slice(0, 3) : [];
+    if (edits.length === 0) {
+      session.action('no-change', { reason: 'Model produced no implementation edits' });
+      return session.finish('no-safe-change-found');
+    }
+
     for (const edit of edits) {
       ensureStepBudget(session.step());
       const result = applyEdit(root, edit);
       session.action('edit', result);
+    }
+
+    if (!hasWorkingTreeChange(root)) {
+      session.action('no-change', { reason: 'Implementation reported success but working tree is unchanged' });
+      return session.finish('no-safe-change-found');
     }
   }
 
@@ -88,6 +95,15 @@ async function run(task, options = {}) {
   const verification = verify(root);
   session.verify(verification);
   if (!verification.ok) return session.finish('failed-verification');
+
+  if (options.mode === 'auto') {
+    const after = inspect(root);
+    if (after.git.status === before.git.status && after.git.diffStat === before.git.diffStat) {
+      session.action('no-change', { reason: 'Verification passed but repository state did not change' });
+      return session.finish('no-safe-change-found');
+    }
+  }
+
   return session.finish(options.mode === 'auto' ? 'verified' : 'verified-plan');
 }
 
