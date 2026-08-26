@@ -1,818 +1,96 @@
-const {
-  app,
-  BrowserWindow,
-  BrowserView,
-  ipcMain
-} = require("electron");
-
-const path = require("path");
+const { app, BrowserWindow, BrowserView, ipcMain, session } = require('electron');
+const path = require('node:path');
+const fs = require('node:fs');
 
 let win = null;
 let tabs = [];
 let activeTab = 0;
-
+let privateCounter = 0;
 const TOOLBAR_HEIGHT = 108;
+const HOME_URL = `file://${path.join(__dirname, 'yadav-search.html')}`;
 
-/* =========================================================
-   CREATE TAB
-========================================================= */
+const dataDir = () => path.join(app.getPath('userData'), 'yadavbrowser-data');
+const historyFile = () => path.join(dataDir(), 'history.json');
+const bookmarksFile = () => path.join(dataDir(), 'bookmarks.json');
+function ensureData(){fs.mkdirSync(dataDir(),{recursive:true});}
+function readJson(file,fallback){try{ensureData();return fs.existsSync(file)?JSON.parse(fs.readFileSync(file,'utf8')):fallback}catch{return fallback}}
+function writeJson(file,value){try{ensureData();fs.writeFileSync(file,JSON.stringify(value,null,2),'utf8');return true}catch(error){console.error(error);return false}}
 
-function createTab(url = `file://${path.join(__dirname, "yadav-search.html")}`) {
-  const view = new BrowserView({
-    webPreferences: {
-      contextIsolation: true,
-      nodeIntegration: false
-    }
-  });
+let historyItems = readJson(historyFile(), []);
+let bookmarks = readJson(bookmarksFile(), []);
+if(!Array.isArray(historyItems)) historyItems=[];
+if(!Array.isArray(bookmarks)) bookmarks=[];
 
-  const tab = {
-    view,
-    title: "New Tab",
-    url
-  };
+function active(){return tabs[activeTab] || null}
+function validWebUrl(url){return url && !url.startsWith('file://') && !url.startsWith('devtools://') && !url.startsWith('about:')}
+function addHistory(url,title){if(!validWebUrl(url))return;historyItems.unshift({url,title:title||url,visitedAt:new Date().toISOString()});historyItems=historyItems.slice(0,2000);writeJson(historyFile(),historyItems)}
+function isBookmarked(url){return bookmarks.some(x=>x.url===url)}
+function send(channel,data){if(win&&!win.isDestroyed())win.webContents.send(channel,data)}
+function sendState(){const t=active();send('tab-update',{activeIndex:activeTab,tabs:tabs.map(x=>({title:x.title||'New Tab',url:x.url||'',private:Boolean(x.private)}))});send('address-update',t?t.url:'');send('bookmark-state',{url:t?t.url:'',bookmarked:!!(t&&!t.private&&isBookmarked(t.url)),private:!!(t&&t.private)});send('bookmarks-update',bookmarks)}
 
+function normalizeUrl(input){let url=String(input||'').trim();if(!url)return '';if(/^https?:\/\//i.test(url))return url;if(/^[a-z][a-z0-9+.-]*:\/\//i.test(url))return url;if(url.includes('.')&&!url.includes(' '))return 'https://'+url;return 'https://www.google.com/search?q='+encodeURIComponent(url)}
+
+function updateBounds(){if(!win||win.isDestroyed()||!active())return;const [width,height]=win.getContentSize();active().view.setBounds({x:0,y:TOOLBAR_HEIGHT,width,height:Math.max(0,height-TOOLBAR_HEIGHT)})}
+function showActive(){if(!win||win.isDestroyed()||!active())return;win.setBrowserView(active().view);updateBounds();sendState()}
+
+function createTab(url=HOME_URL,options={}){
+  const isPrivate=Boolean(options.private);
+  const partition=isPrivate?`yadav-private-${++privateCounter}-${Date.now()}`:undefined;
+  const view=new BrowserView({webPreferences:{contextIsolation:true,nodeIntegration:false,partition}});
+  const tab={view,url,title:isPrivate?'Private Tab':'New Tab',private:isPrivate,partition};
   tabs.push(tab);
 
-  /* -------------------------
-     Load website
-  ------------------------- */
-
+  view.webContents.setWindowOpenHandler(({url:newUrl})=>{createNewTab(newUrl,{private:tab.private});return {action:'deny'}});
+  view.webContents.on('page-title-updated',(event,title)=>{event.preventDefault();tab.title=title||(tab.private?'Private Tab':'New Tab');sendState()});
+  view.webContents.on('did-start-loading',()=>{if(tabs[activeTab]===tab)send('loading-state',true)});
+  view.webContents.on('did-stop-loading',()=>{if(tabs[activeTab]===tab)send('loading-state',false)});
+  view.webContents.on('did-navigate',(_,newUrl)=>{tab.url=newUrl;if(!tab.private)addHistory(newUrl,tab.title);if(tabs[activeTab]===tab)sendState()});
+  view.webContents.on('did-navigate-in-page',(_,newUrl)=>{tab.url=newUrl;if(tabs[activeTab]===tab)sendState()});
+  view.webContents.session.on('will-download',(_,item)=>{const save=path.join(app.getPath('downloads'),item.getFilename());item.setSavePath(save);item.on('updated',(_,state)=>send('download-update',{filename:item.getFilename(),savePath:save,state,receivedBytes:item.getReceivedBytes(),totalBytes:item.getTotalBytes()}));item.once('done',(_,state)=>send('download-update',{filename:item.getFilename(),savePath:save,state,receivedBytes:item.getReceivedBytes(),totalBytes:item.getTotalBytes()}))});
+  view.webContents.on('before-input-event',(event,input)=>handleShortcut(event,input));
   view.webContents.loadURL(url);
-
-  /* -------------------------
-     Page title
-  ------------------------- */
-
-  view.webContents.on(
-    "page-title-updated",
-    (event, title) => {
-      event.preventDefault();
-
-      tab.title = title || "New Tab";
-
-      sendTabUpdate();
-    }
-  );
-
-  /* -------------------------
-     Normal navigation
-  ------------------------- */
-
-  view.webContents.on(
-    "did-navigate",
-    (_, newURL) => {
-      tab.url = newURL;
-
-      if (tabs[activeTab] === tab) {
-        sendAddressUpdate(newURL);
-        sendTabUpdate();
-      }
-    }
-  );
-
-  /* -------------------------
-     In-page navigation
-  ------------------------- */
-
-  view.webContents.on(
-    "did-navigate-in-page",
-    (_, newURL) => {
-      tab.url = newURL;
-
-      if (tabs[activeTab] === tab) {
-        sendAddressUpdate(newURL);
-        sendTabUpdate();
-      }
-    }
-  );
-
-  /* =======================================================
-     KEYBOARD SHORTCUTS
-     
-     IMPORTANT:
-     These are handled inside the BrowserView because
-     the website has keyboard focus.
-  ======================================================= */
-
-  view.webContents.on(
-    "before-input-event",
-    (event, input) => {
-      if (input.type !== "keyDown") {
-        return;
-      }
-
-      const key = String(input.key || "").toLowerCase();
-
-      /* -------------------------
-         CTRL + T
-         New tab
-      ------------------------- */
-
-      if (input.control && !input.alt && key === "t") {
-        event.preventDefault();
-
-        createNewTab();
-
-        return;
-      }
-
-      /* -------------------------
-         CTRL + W
-         Close current tab
-      ------------------------- */
-
-      if (input.control && !input.alt && key === "w") {
-        event.preventDefault();
-
-        closeActiveTab();
-
-        return;
-      }
-
-      /* -------------------------
-         CTRL + SHIFT + TAB
-         Previous tab
-      ------------------------- */
-
-      if (
-        input.control &&
-        input.shift &&
-        !input.alt &&
-        key === "tab"
-      ) {
-        event.preventDefault();
-
-        switchToPreviousTab();
-
-        return;
-      }
-
-      /* -------------------------
-         CTRL + TAB
-         Next tab
-      ------------------------- */
-
-      if (
-        input.control &&
-        !input.shift &&
-        !input.alt &&
-        key === "tab"
-      ) {
-        event.preventDefault();
-
-        switchToNextTab();
-
-        return;
-      }
-
-      /* -------------------------
-         CTRL + 1 to CTRL + 9
-      ------------------------- */
-
-      if (
-        input.control &&
-        !input.alt &&
-        /^[1-9]$/.test(input.key)
-      ) {
-        event.preventDefault();
-
-        const index = Number(input.key) - 1;
-
-        switchToTab(index);
-
-        return;
-      }
-    }
-  );
-
   return tab;
 }
 
-/* =========================================================
-   NEW TAB
-========================================================= */
+function createNewTab(url=HOME_URL,options={}){const tab=createTab(url,options);activeTab=tabs.length-1;showActive()}
+function createPrivateTab(){createNewTab(HOME_URL,{private:true})}
+function closeActiveTab(){if(tabs.length<=1)return;const tab=active();try{tab.view.webContents.destroy()}catch{}tabs.splice(activeTab,1);if(activeTab>=tabs.length)activeTab=tabs.length-1;showActive()}
+function switchToTab(index){if(!Number.isInteger(index)||index<0||index>=tabs.length)return;activeTab=index;showActive()}
+function nextTab(){if(tabs.length>1)switchToTab((activeTab+1)%tabs.length)}
+function previousTab(){if(tabs.length>1)switchToTab((activeTab-1+tabs.length)%tabs.length)}
+function bookmarkActive(){const t=active();if(!t||t.private||!validWebUrl(t.url))return{success:false,reason:t?.private?'private-tab':'invalid-url'};if(isBookmarked(t.url)){bookmarks=bookmarks.filter(x=>x.url!==t.url)}else{bookmarks.unshift({id:`${Date.now()}-${Math.random().toString(36).slice(2)}`,title:t.title||t.url,url:t.url,createdAt:new Date().toISOString()})}writeJson(bookmarksFile(),bookmarks);sendState();return{success:true,bookmarked:isBookmarked(t.url)}}
+function focusAddress(){send('focus-address-bar')}
 
-function createNewTab(url = `file://${path.join(__dirname, "yadav-search.html")}`) {
-  const tab = createTab(url);
+function handleShortcut(event,input){if(input.type!=='keyDown')return;const key=String(input.key||'').toLowerCase();if(input.control&&!input.alt&&!input.shift&&key==='t'){event.preventDefault();createNewTab();return}if(input.control&&!input.alt&&!input.shift&&key==='w'){event.preventDefault();closeActiveTab();return}if(input.control&&input.shift&&!input.alt&&key==='tab'){event.preventDefault();previousTab();return}if(input.control&&!input.shift&&!input.alt&&key==='tab'){event.preventDefault();nextTab();return}if(input.control&&!input.alt&&/^[1-9]$/.test(input.key)){event.preventDefault();switchToTab(Number(input.key)-1);return}if(input.control&&!input.alt&&!input.shift&&key==='l'){event.preventDefault();focusAddress();return}if(input.control&&!input.alt&&!input.shift&&key==='d'){event.preventDefault();bookmarkActive();return}if(input.control&&!input.alt&&!input.shift&&key==='r'){event.preventDefault();active()?.view.webContents.reload();return}if(input.control&&!input.alt&&!input.shift&&key==='h'){event.preventDefault();send('show-history',historyItems);return}}
 
-  activeTab = tabs.length - 1;
-
-  updateActiveView();
-  sendTabUpdate();
-  sendAddressUpdate(tab.url);
+function createWindow(){
+  win=new BrowserWindow({width:1280,height:800,minWidth:900,minHeight:560,title:'YadavBrowser',webPreferences:{preload:path.join(__dirname,'preload.js'),contextIsolation:true,nodeIntegration:false}});
+  createTab();activeTab=0;win.loadFile(path.join(__dirname,'index.html'));
+  win.webContents.on('did-finish-load',()=>showActive());
+  win.on('resize',updateBounds);
+  win.on('closed',()=>{win=null;tabs=[];activeTab=0});
 }
 
-/* =========================================================
-   CLOSE ACTIVE TAB
-========================================================= */
-
-function closeActiveTab() {
-  /*
-    NEVER close the YadavBrowser window when there is
-    only one tab.
-
-    This is the important fix for Ctrl + W.
-  */
-
-  if (tabs.length <= 1) {
-    return;
-  }
-
-  const tab = tabs[activeTab];
-
-  if (!tab) {
-    return;
-  }
-
-  try {
-    tab.view.webContents.destroy();
-  } catch (error) {
-    console.error(
-      "Error destroying tab:",
-      error
-    );
-  }
-
-  tabs.splice(activeTab, 1);
-
-  /*
-    If the last tab was closed,
-    move to the new last tab.
-  */
-
-  if (activeTab >= tabs.length) {
-    activeTab = tabs.length - 1;
-  }
-
-  updateActiveView();
-  sendTabUpdate();
-
-  if (tabs[activeTab]) {
-    sendAddressUpdate(
-      tabs[activeTab].url
-    );
-  }
-}
-
-/* =========================================================
-   NEXT TAB
-========================================================= */
-
-function switchToNextTab() {
-  if (tabs.length <= 1) {
-    return;
-  }
-
-  activeTab =
-    (activeTab + 1) % tabs.length;
-
-  updateActiveView();
-  sendTabUpdate();
-
-  sendAddressUpdate(
-    tabs[activeTab].url
-  );
-}
-
-/* =========================================================
-   PREVIOUS TAB
-========================================================= */
-
-function switchToPreviousTab() {
-  if (tabs.length <= 1) {
-    return;
-  }
-
-  activeTab =
-    (activeTab - 1 + tabs.length) %
-    tabs.length;
-
-  updateActiveView();
-  sendTabUpdate();
-
-  sendAddressUpdate(
-    tabs[activeTab].url
-  );
-}
-
-/* =========================================================
-   SWITCH DIRECTLY TO TAB
-========================================================= */
-
-function switchToTab(index) {
-  if (
-    typeof index !== "number" ||
-    index < 0 ||
-    index >= tabs.length
-  ) {
-    return;
-  }
-
-  activeTab = index;
-
-  updateActiveView();
-  sendTabUpdate();
-
-  sendAddressUpdate(
-    tabs[activeTab].url
-  );
-}
-
-/* =========================================================
-   CREATE WINDOW
-========================================================= */
-
-function createWindow() {
-  win = new BrowserWindow({
-    width: 1280,
-    height: 800,
-    minWidth: 800,
-    minHeight: 500,
-
-    title: "YadavBrowser",
-
-    webPreferences: {
-      preload: path.join(
-        __dirname,
-        "preload.js"
-      ),
-
-      contextIsolation: true,
-      nodeIntegration: false
-    }
-  });
-
-  /* -------------------------
-     Create first tab
-  ------------------------- */
-
-  createTab();
-
-  activeTab = 0;
-
-  /* -------------------------
-     Load UI
-  ------------------------- */
-
-  win.loadFile(
-    path.join(__dirname, "index.html")
-  );
-
-  /* -------------------------
-     UI loaded
-  ------------------------- */
-
-  win.webContents.on(
-    "did-finish-load",
-    () => {
-      updateActiveView();
-
-      sendTabUpdate();
-
-      if (tabs[activeTab]) {
-        sendAddressUpdate(
-          tabs[activeTab].url
-        );
-      }
-    }
-  );
-
-  /* -------------------------
-     Resize
-  ------------------------- */
-
-  win.on(
-    "resize",
-    () => {
-      updateViewBounds();
-    }
-  );
-
-  /* =======================================================
-     EXTRA WINDOW-LEVEL SHORTCUT HANDLER
-     
-     This protects shortcuts when the BrowserView is not
-     the focused element.
-  ======================================================= */
-
-  win.webContents.on(
-    "before-input-event",
-    (event, input) => {
-      if (input.type !== "keyDown") {
-        return;
-      }
-
-      const key = String(
-        input.key || ""
-      ).toLowerCase();
-
-      /* CTRL + T */
-
-      if (
-        input.control &&
-        !input.alt &&
-        key === "t"
-      ) {
-        event.preventDefault();
-
-        createNewTab();
-
-        return;
-      }
-
-      /* CTRL + W */
-
-      if (
-        input.control &&
-        !input.alt &&
-        key === "w"
-      ) {
-        event.preventDefault();
-
-        closeActiveTab();
-
-        return;
-      }
-
-      /* CTRL + SHIFT + TAB */
-
-      if (
-        input.control &&
-        input.shift &&
-        !input.alt &&
-        key === "tab"
-      ) {
-        event.preventDefault();
-
-        switchToPreviousTab();
-
-        return;
-      }
-
-      /* CTRL + TAB */
-
-      if (
-        input.control &&
-        !input.shift &&
-        !input.alt &&
-        key === "tab"
-      ) {
-        event.preventDefault();
-
-        switchToNextTab();
-
-        return;
-      }
-
-      /* CTRL + 1-9 */
-
-      if (
-        input.control &&
-        !input.alt &&
-        /^[1-9]$/.test(input.key)
-      ) {
-        event.preventDefault();
-
-        switchToTab(
-          Number(input.key) - 1
-        );
-
-        return;
-      }
-    }
-  );
-
-  /* -------------------------
-     Window close
-  ------------------------- */
-
-  win.on(
-    "closed",
-    () => {
-      win = null;
-    }
-  );
-}
-
-/* =========================================================
-   UPDATE BROWSER VIEW SIZE
-========================================================= */
-
-function updateViewBounds() {
-  if (
-    !win ||
-    win.isDestroyed() ||
-    !tabs[activeTab]
-  ) {
-    return;
-  }
-
-  const [width, height] =
-    win.getContentSize();
-
-  tabs[activeTab].view.setBounds({
-    x: 0,
-    y: TOOLBAR_HEIGHT,
-    width: width,
-    height: Math.max(
-      0,
-      height - TOOLBAR_HEIGHT
-    )
-  });
-}
-
-/* =========================================================
-   UPDATE ACTIVE VIEW
-========================================================= */
-
-function updateActiveView() {
-  if (
-    !win ||
-    win.isDestroyed() ||
-    !tabs[activeTab]
-  ) {
-    return;
-  }
-
-  win.setBrowserView(
-    tabs[activeTab].view
-  );
-
-  updateViewBounds();
-
-  sendAddressUpdate(
-    tabs[activeTab].url
-  );
-}
-
-/* =========================================================
-   SEND TAB UPDATE
-========================================================= */
-
-function sendTabUpdate() {
-  if (
-    !win ||
-    win.isDestroyed()
-  ) {
-    return;
-  }
-
-  win.webContents.send(
-    "tab-update",
-    {
-      activeIndex: activeTab,
-
-      tabs: tabs.map(
-        (tab) => ({
-          title:
-            tab.title || "New Tab",
-
-          url:
-            tab.url || ""
-        })
-      )
-    }
-  );
-}
-
-/* =========================================================
-   SEND ADDRESS UPDATE
-========================================================= */
-
-function sendAddressUpdate(url) {
-  if (
-    !win ||
-    win.isDestroyed()
-  ) {
-    return;
-  }
-
-  win.webContents.send(
-    "address-update",
-    url || ""
-  );
-}
-
-/* =========================================================
-   NAVIGATION
-========================================================= */
-/* =========================================================
-   FOCUS ADDRESS BAR
-========================================================= */
-ipcMain.on(
-  "focus-address-bar",
-  () => {
-    if (
-      !win ||
-      win.isDestroyed()
-    ) {
-      return;
-    }
-
-    win.webContents.send(
-      "focus-address-bar"
-    );
-  }
-);
-ipcMain.on(
-  "navigate",
-  (_, url) => {
-    const tab =
-      tabs[activeTab];
-
-    if (!tab) {
-      return;
-    }
-
-    url = String(url || "").trim();
-
-    if (!url) {
-      return;
-    }
-
-    /*
-      If it is not a URL, search Google.
-    */
-
-    if (
-      !url.startsWith("http://") &&
-      !url.startsWith("https://")
-    ) {
-      if (
-        url.includes(".") &&
-        !url.includes(" ")
-      ) {
-        url =
-          "https://" + url;
-      } else {
-        url =
-          "https://www.google.com/search?q=" +
-          encodeURIComponent(url);
-      }
-    }
-
-    tab.url = url;
-
-    tab.view.webContents.loadURL(
-      url
-    );
-
-    sendAddressUpdate(url);
-  }
-);
-
-/* =========================================================
-   BACK
-========================================================= */
-
-ipcMain.on(
-  "back",
-  () => {
-    const tab =
-      tabs[activeTab];
-
-    if (!tab) {
-      return;
-    }
-
-    if (
-      tab.view.webContents.canGoBack()
-    ) {
-      tab.view.webContents.goBack();
-    }
-  }
-);
-
-/* =========================================================
-   FORWARD
-========================================================= */
-
-ipcMain.on(
-  "forward",
-  () => {
-    const tab =
-      tabs[activeTab];
-
-    if (!tab) {
-      return;
-    }
-
-    if (
-      tab.view.webContents.canGoForward()
-    ) {
-      tab.view.webContents.goForward();
-    }
-  }
-);
-
-/* =========================================================
-   RELOAD
-========================================================= */
-
-ipcMain.on(
-  "reload",
-  () => {
-    const tab =
-      tabs[activeTab];
-
-    if (!tab) {
-      return;
-    }
-
-    tab.view.webContents.reload();
-  }
-);
-
-/* =========================================================
-   NEW TAB FROM UI
-========================================================= */
-
-ipcMain.on(
-  "new-tab",
-  () => {
-    createNewTab();
-  }
-);
-
-/* =========================================================
-   CLOSE TAB FROM UI
-========================================================= */
-
-ipcMain.on(
-  "close-tab",
-  () => {
-    closeActiveTab();
-  }
-);
-
-/* =========================================================
-   SWITCH TAB FROM UI
-========================================================= */
-
-ipcMain.on(
-  "switch-tab",
-  (_, index) => {
-    if (tabs.length === 0) {
-      return;
-    }
-
-    if (index === "next") {
-      switchToNextTab();
-      return;
-    }
-
-    if (index === "previous") {
-      switchToPreviousTab();
-      return;
-    }
-
-    if (
-      typeof index === "number"
-    ) {
-      switchToTab(index);
-    }
-  }
-);
-
-/* =========================================================
-   APP READY
-========================================================= */
-
-app.whenReady().then(
-  () => {
-    createWindow();
-
-    /*
-      macOS:
-      Re-create window if app is activated
-      and no windows exist.
-    */
-
-    app.on(
-      "activate",
-      () => {
-        if (
-          BrowserWindow.getAllWindows()
-            .length === 0
-        ) {
-          createWindow();
-        }
-      }
-    );
-  }
-);
-
-/* =========================================================
-   ALL WINDOWS CLOSED
-========================================================= */
-
-app.on(
-  "window-all-closed",
-  () => {
-    if (
-      process.platform !== "darwin"
-    ) {
-      app.quit();
-    }
-  }
-);
+ipcMain.on('navigate',(_,url)=>{const t=active();if(!t)return;const target=normalizeUrl(url);if(!target)return;t.url=target;t.view.webContents.loadURL(target);send('address-update',target)});
+ipcMain.on('back',()=>{const t=active();if(t?.view.webContents.canGoBack())t.view.webContents.goBack()});
+ipcMain.on('forward',()=>{const t=active();if(t?.view.webContents.canGoForward())t.view.webContents.goForward()});
+ipcMain.on('reload',()=>active()?.view.webContents.reload());
+ipcMain.on('new-tab',()=>createNewTab());
+ipcMain.on('new-private-tab',()=>createPrivateTab());
+ipcMain.on('close-tab',closeActiveTab);
+ipcMain.on('switch-tab',(_,index)=>{if(index==='next')nextTab();else if(index==='previous')previousTab();else switchToTab(index)});
+ipcMain.on('focus-address-bar',focusAddress);
+ipcMain.on('open-new-tab',(_,url)=>createNewTab(normalizeUrl(url)));
+ipcMain.on('open-private-tab',(_,url)=>createNewTab(url?normalizeUrl(url):HOME_URL,{private:true}));
+ipcMain.handle('bookmark:toggle',bookmarkActive);
+ipcMain.handle('bookmark:list',()=>bookmarks);
+ipcMain.handle('bookmark:remove',(_,url)=>{const before=bookmarks.length;bookmarks=bookmarks.filter(x=>x.url!==url);writeJson(bookmarksFile(),bookmarks);sendState();return{success:before!==bookmarks.length}});
+ipcMain.handle('history:list',()=>historyItems);
+ipcMain.handle('history:clear',()=>{historyItems=[];const success=writeJson(historyFile(),historyItems);send('history-update',historyItems);return{success}});
+ipcMain.handle('history:remove',(_,url)=>{const before=historyItems.length;historyItems=historyItems.filter(x=>x.url!==url);const success=writeJson(historyFile(),historyItems);send('history-update',historyItems);return{success:success&&before!==historyItems.length}});
+ipcMain.handle('browser:get-state',()=>({tabs:tabs.map(t=>({title:t.title,url:t.url,private:t.private})),activeIndex:activeTab,bookmarks:bookmarks.length,history:historyItems.length}));
+ipcMain.handle('browser:clear-data',()=>{historyItems=[];bookmarks=[];return{success:writeJson(historyFile(),historyItems)&&writeJson(bookmarksFile(),bookmarks)}});
+ipcMain.handle('downloads:path',()=>app.getPath('downloads'));
+
+app.whenReady().then(()=>{ensureData();createWindow();app.on('activate',()=>{if(BrowserWindow.getAllWindows().length===0)createWindow()})});
+app.on('window-all-closed',()=>{if(process.platform!=='darwin')app.quit()});
