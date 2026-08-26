@@ -1,25 +1,39 @@
-const { contextBridge, ipcRenderer } = require("electron");
+const { contextBridge, ipcRenderer } = require('electron');
 
-contextBridge.exposeInMainWorld("browserAPI", {
-  navigate: (url) => ipcRenderer.send("navigate", url),
-  back: () => ipcRenderer.send("back"),
-  forward: () => ipcRenderer.send("forward"),
-  reload: () => ipcRenderer.send("reload"),
-  newTab: () => ipcRenderer.send("new-tab"),
-  closeTab: () => ipcRenderer.send("close-tab"),
-  switchTab: (direction) => ipcRenderer.send("switch-tab", direction),
-  focusAddressBar: () => ipcRenderer.send("focus-address-bar"),
-  aaryaAsk: (message) => ipcRenderer.invoke("aarya:ask", { message }),
+contextBridge.exposeInMainWorld('browserAPI', {
+  navigate: url => ipcRenderer.send('navigate', url),
+  back: () => ipcRenderer.send('back'),
+  forward: () => ipcRenderer.send('forward'),
+  reload: () => ipcRenderer.send('reload'),
+  newTab: () => ipcRenderer.send('new-tab'),
+  newPrivateTab: () => ipcRenderer.send('new-private-tab'),
+  closeTab: () => ipcRenderer.send('close-tab'),
+  switchTab: index => ipcRenderer.send('switch-tab', index),
+  focusAddressBar: () => ipcRenderer.send('focus-address-bar'),
 
-  onTabUpdate: (callback) => {
-    ipcRenderer.on("tab-update", (_, data) => callback(data));
-  },
+  toggleBookmark: () => ipcRenderer.invoke('bookmark:toggle'),
+  getBookmarks: () => ipcRenderer.invoke('bookmark:list'),
+  removeBookmark: url => ipcRenderer.invoke('bookmark:remove', url),
+  getHistory: () => ipcRenderer.invoke('history:list'),
+  clearHistory: () => ipcRenderer.invoke('history:clear'),
+  removeHistory: url => ipcRenderer.invoke('history:remove', url),
+  getBrowserState: () => ipcRenderer.invoke('browser:get-state'),
+  clearBrowserData: () => ipcRenderer.invoke('browser:clear-data'),
+  getDownloadsPath: () => ipcRenderer.invoke('downloads:path'),
+  openNewTab: url => ipcRenderer.send('open-new-tab', url),
+  openPrivateTab: url => ipcRenderer.send('open-private-tab', url),
 
-  onAddressUpdate: (callback) => {
-    ipcRenderer.on("address-update", (_, url) => callback(url));
-  },
+  aaryaAsk: message => ipcRenderer.invoke('aarya:ask', { message }),
 
-  onFocusAddressBar: (callback) => {
-    ipcRenderer.on("focus-address-bar", () => callback());
-  }
+  onTabUpdate: callback => ipcRenderer.on('tab-update', (_, data) => callback(data)),
+  onAddressUpdate: callback => ipcRenderer.on('address-update', (_, url) => callback(url)),
+  onFocusAddressBar: callback => ipcRenderer.on('focus-address-bar', () => callback()),
+  onBookmarkState: callback => ipcRenderer.on('bookmark-state', (_, data) => callback(data)),
+  onBookmarksUpdate: callback => ipcRenderer.on('bookmarks-update', (_, data) => callback(data)),
+  onHistoryUpdate: callback => ipcRenderer.on('history-update', (_, data) => callback(data)),
+  onDownloadUpdate: callback => ipcRenderer.on('download-update', (_, data) => callback(data)),
+  onLoadingState: callback => ipcRenderer.on('loading-state', (_, loading) => callback(loading)),
+  onShowHistory: callback => ipcRenderer.on('show-history', (_, data) => callback(data)),
+
+  onAaryaResponse: callback => ipcRenderer.on('aarya:response', (_, data) => callback(data))
 });
