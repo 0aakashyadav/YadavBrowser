@@ -1,0 +1,74 @@
+name: YB Autonomous Engineer
+
+on:
+  workflow_dispatch:
+    inputs:
+      goal:
+        description: 'Optional improvement goal for this run'
+        required: false
+        type: string
+  schedule:
+    - cron: '17 2 * * *'
+
+permissions:
+  contents: write
+
+jobs:
+  autonomous-engineer:
+    runs-on: windows-latest
+    if: ${{ secrets.GEMINI_API_KEY != '' }}
+    steps:
+      - name: Checkout main
+        uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+          token: ${{ secrets.GITHUB_TOKEN }}
+
+      - name: Setup Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: 22
+          cache: npm
+
+      - name: Install dependencies
+        run: npm install
+
+      - name: Create isolated agent branch
+        shell: pwsh
+        run: |
+          $branch = "yb-agent/${{ github.run_id }}"
+          git config user.name "YB Autonomous Engineer"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          git switch -c $branch
+          "YB_AGENT_BRANCH=$branch" | Out-File -FilePath $env:GITHUB_ENV -Encoding utf8 -Append
+
+      - name: Autonomous engineering iteration
+        env:
+          GEMINI_API_KEY: ${{ secrets.GEMINI_API_KEY }}
+          GEMINI_MODEL: ${{ vars.GEMINI_MODEL }}
+          YB_AGENT_GOAL: ${{ inputs.goal }}
+        run: npm run agent:auto
+
+      - name: Build verification
+        run: npm run build
+
+      - name: Commit and push verified changes
+        shell: pwsh
+        run: |
+          git add -A
+          if (git diff --cached --quiet) {
+            Write-Host "No changes produced by this iteration."
+            exit 0
+          }
+          git commit -m "chore(agent): autonomous YB improvement"
+          git push --set-upstream origin $env:YB_AGENT_BRANCH
+
+      - name: Create pull request
+        shell: pwsh
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        run: |
+          $existing = gh pr list --head $env:YB_AGENT_BRANCH --base main --json number --jq 'length'
+          if ($existing -eq '0') {
+            gh pr create --base main --head $env:YB_AGENT_BRANCH --title "YB autonomous improvement #${{ github.run_id }}" --body "Automated YB Engineer iteration. Build verification passed. Review the diff before merging."
+          }
