@@ -3,6 +3,7 @@ const fs = require("node:fs");
 const path = require("node:path");
 
 require("./bridge").installAaryaIPC();
+require("../search/bridge").installSearchIPC();
 
 const preloadPath = path.join(__dirname, "preload.js");
 const uiPath = path.join(__dirname, "ui.js");
