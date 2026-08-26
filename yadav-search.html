@@ -1,172 +1,42 @@
-<!DOCTYPE html>
+<!doctype html>
 <html lang="en">
 <head>
-  <meta charset="UTF-8">
-  <meta name="viewport" content="width=device-width, initial-scale=1.0">
-
-  <title>Yadav Search</title>
-
-  <style>
-    * {
-      box-sizing: border-box;
-    }
-
-    html,
-    body {
-      margin: 0;
-      width: 100%;
-      height: 100%;
-    }
-
-    body {
-      font-family: Arial, sans-serif;
-      background: #202124;
-      color: white;
-
-      display: flex;
-      justify-content: center;
-      align-items: center;
-    }
-
-    .container {
-      width: 90%;
-      max-width: 700px;
-      text-align: center;
-    }
-
-    .logo {
-      width: 110px;
-      height: 110px;
-      margin: 0 auto 20px;
-      border-radius: 50%;
-      overflow: hidden;
-    }
-
-    .logo img {
-      width: 100%;
-      height: 100%;
-      object-fit: cover;
-    }
-
-    h1 {
-      margin: 0 0 30px;
-      font-size: 42px;
-      letter-spacing: 1px;
-    }
-
-    .search-box {
-      display: flex;
-      width: 100%;
-      height: 56px;
-
-      background: white;
-      border-radius: 30px;
-      overflow: hidden;
-    }
-
-    .search-box input {
-      flex: 1;
-      border: none;
-      outline: none;
-
-      padding: 0 24px;
-
-      font-size: 17px;
-      color: #202124;
-    }
-
-    .search-box button {
-      width: 70px;
-      border: none;
-
-      background: #4285f4;
-      color: white;
-
-      font-size: 22px;
-      cursor: pointer;
-    }
-
-    .search-box button:hover {
-      background: #3367d6;
-    }
-
-    .subtitle {
-      margin-top: 18px;
-      color: #aaa;
-      font-size: 14px;
-    }
-  </style>
-</head>
-
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<title>Yadav Search</title>
+<style>
+:root{color-scheme:dark;--bg:#0b1020;--panel:#111827;--panel2:#172033;--text:#f5f7fb;--muted:#94a3b8;--line:#263247;--accent:#3b82f6;--accent2:#22d3ee}
+*{box-sizing:border-box}html,body{margin:0;min-height:100%;font-family:Arial,Helvetica,sans-serif;background:radial-gradient(circle at 15% 5%,#16366b 0,transparent 32%),radial-gradient(circle at 85% 85%,#073a4a 0,transparent 28%),var(--bg);color:var(--text)}
+body{min-height:100vh}.top{height:64px;padding:0 24px;display:flex;align-items:center;justify-content:space-between;border-bottom:1px solid rgba(255,255,255,.07);background:rgba(7,12,25,.72);backdrop-filter:blur(18px)}.brand{display:flex;align-items:center;gap:10px;font-weight:700}.brand img{width:34px;height:34px;border-radius:50%;object-fit:cover}.brand small{display:block;color:var(--muted);font-weight:400;font-size:10px;margin-top:2px}.top-actions{display:flex;gap:8px}.top button,.chip{border:1px solid var(--line);background:rgba(255,255,255,.05);color:var(--text);border-radius:18px;padding:8px 13px;cursor:pointer}.top button:hover,.chip:hover{background:rgba(255,255,255,.1)}
+main{width:min(1000px,calc(100% - 32px));margin:auto;padding:62px 0 40px}.hero{text-align:center}.hero-logo{width:86px;height:86px;border-radius:50%;object-fit:cover;box-shadow:0 18px 60px rgba(37,99,235,.3)}h1{font-size:clamp(38px,7vw,64px);margin:15px 0 8px;letter-spacing:-2px}.accent{background:linear-gradient(90deg,#60a5fa,#22d3ee);-webkit-background-clip:text;background-clip:text;color:transparent}.tag{color:var(--muted);margin:0 0 28px}
+.search{height:62px;width:min(780px,100%);margin:auto;display:flex;align-items:center;padding:5px;border:1px solid #34445d;border-radius:32px;background:rgba(255,255,255,.08);box-shadow:0 18px 55px rgba(0,0,0,.28)}.search:focus-within{border-color:#4f9cff;box-shadow:0 0 0 3px rgba(59,130,246,.15),0 18px 55px rgba(0,0,0,.28)}input{flex:1;min-width:0;border:0;outline:0;background:transparent;color:#fff;font-size:17px;padding:0 18px}.search button{width:52px;height:52px;border:0;border-radius:50%;background:linear-gradient(135deg,var(--accent),var(--accent2));color:white;font-size:20px;cursor:pointer}.suggestions{width:min(780px,100%);margin:4px auto 0;text-align:left;background:var(--panel);border:1px solid var(--line);border-radius:14px;overflow:hidden;display:none}.suggestions.show{display:block}.suggestion{padding:11px 16px;cursor:pointer}.suggestion:hover{background:var(--panel2)}
+.modes{display:flex;justify-content:center;gap:8px;flex-wrap:wrap;margin:22px 0}.chip.active{background:rgba(59,130,246,.2);border-color:#3b82f6}.cards{display:grid;grid-template-columns:repeat(5,1fr);gap:12px;margin-top:30px}.card{padding:18px 10px;border:1px solid var(--line);border-radius:16px;background:rgba(255,255,255,.045);cursor:pointer;text-align:center;transition:.18s}.card:hover{transform:translateY(-3px);background:rgba(255,255,255,.08)}.ico{font-size:24px;margin-bottom:8px}.card strong{font-size:13px}.card span{display:block;color:var(--muted);font-size:10px;margin-top:4px}.section{margin-top:28px}.section-head{display:flex;justify-content:space-between;align-items:center;margin-bottom:10px}.section-head h2{font-size:15px;margin:0}.section-head button{border:0;background:none;color:#60a5fa;cursor:pointer}.recent{display:flex;gap:8px;flex-wrap:wrap}.recent span{padding:8px 11px;border-radius:12px;background:rgba(255,255,255,.05);border:1px solid var(--line);font-size:12px;cursor:pointer}.about{display:grid;grid-template-columns:1fr 1fr;gap:14px;margin-top:28px}.about>div{padding:22px;border:1px solid var(--line);border-radius:18px;background:rgba(255,255,255,.045)}.about h3{margin:0 0 8px}.about p{margin:0;color:var(--muted);font-size:13px;line-height:1.55}footer{text-align:center;color:#64748b;font-size:11px;padding:28px}
+@media(max-width:760px){main{padding-top:38px}.cards{grid-template-columns:repeat(2,1fr)}.about{grid-template-columns:1fr}.top{padding:0 14px}.top-actions button:last-child{display:none}}
+</style></head>
 <body>
-
-  <div class="container">
-
-    <div class="logo">
-      <img
-        src="logo.png"
-        alt="YadavBrowser"
-      >
-    </div>
-
-    <h1>Yadav Search</h1>
-
-    <form
-      class="search-box"
-      id="searchForm"
-    >
-
-      <input
-        id="searchInput"
-        type="text"
-        placeholder="Search the web..."
-        autocomplete="off"
-        autofocus
-      >
-
-      <button
-        type="submit"
-        aria-label="Search"
-      >
-        🔍
-      </button>
-
-    </form>
-
-    <div class="subtitle">
-      Search the web with Yadav Search
-    </div>
-
-  </div>
-
-  <script>
-    const searchForm =
-      document.getElementById("searchForm");
-
-    const searchInput =
-      document.getElementById("searchInput");
-
-    searchForm.addEventListener(
-      "submit",
-      (event) => {
-
-        event.preventDefault();
-
-        const query =
-          searchInput.value.trim();
-
-        if (!query) {
-          return;
-        }
-
-        const url =
-          "https://www.google.com/search?q=" +
-          encodeURIComponent(query);
-
-        window.location.href = url;
-      }
-    );
-  </script>
-
-</body>
-</html>
+<header class="top"><div class="brand"><img src="logo.png" alt="YadavBrowser"><div>Yadav Search<small>Search • Discover • Navigate</small></div></div><div class="top-actions"><button onclick="openBrowser()">YB</button><button onclick="openHome()">Home</button></div></header>
+<main>
+<section class="hero"><img class="hero-logo" src="logo.png" alt="Yadav Search"><h1>Yadav <span class="accent">Search</span></h1><p class="tag">A fast, focused search starting point for YadavBrowser.</p>
+<form class="search" id="form"><input id="q" autocomplete="off" autofocus placeholder="Search the web or enter a website"><button aria-label="Search">⌕</button></form><div class="suggestions" id="suggestions"></div>
+<nav class="modes" aria-label="Search types"><button class="chip active" data-mode="web">🌐 Web</button><button class="chip" data-mode="news">📰 News</button><button class="chip" data-mode="images">🖼️ Images</button><button class="chip" data-mode="videos">🎬 Videos</button></nav></section>
+<section class="cards"><div class="card" onclick="quick('latest news','news')"><div class="ico">📰</div><strong>News</strong><span>Current stories</span></div><div class="card" onclick="quick('','web')"><div class="ico">🌐</div><strong>Web</strong><span>Search the web</span></div><div class="card" onclick="quick('YouTube','videos')"><div class="ico">▶️</div><strong>Videos</strong><span>Find videos</span></div><div class="card" onclick="quick('images','images')"><div class="ico">🖼️</div><strong>Images</strong><span>Find images</span></div><div class="card" onclick="openChess()"><div class="ico">♟️</div><strong>Chess</strong><span>Open your game</span></div></section>
+<section class="section" id="recentSection"><div class="section-head"><h2>Recent searches</h2><button onclick="clearRecent()">Clear</button></div><div class="recent" id="recent"></div></section>
+<section class="about"><div><h3>Yadav Search</h3><p>This is the search experience built for YadavBrowser. It keeps search, navigation and browser tools close together instead of forcing you through a separate app.</p></div><div><h3>Built for YB</h3><p>Search mode shortcuts, recent searches and direct browser navigation are designed to work naturally inside the YadavBrowser shell.</p></div></section>
+</main><footer>© 2026 YadavBrowser · Yadav Search</footer>
+<script>
+const q=document.getElementById('q'),form=document.getElementById('form'),suggestions=document.getElementById('suggestions'),recentEl=document.getElementById('recent');let mode='web';
+const providers={web:'https://www.google.com/search?q=',news:'https://www.google.com/search?tbm=nws&q=',images:'https://www.google.com/search?tbm=isch&q=',videos:'https://www.google.com/search?tbm=vid&q='};
+function navigate(url){if(window.browserAPI?.navigate)window.browserAPI.navigate(url);else location.href=url}
+function search(value=q.value,selectedMode=mode){value=String(value||'').trim();if(!value){q.focus();return}saveRecent(value);if(/^[a-zA-Z][a-zA-Z0-9+.-]*:\/\//.test(value)||(/^[\w.-]+\.[a-z]{2,}(\/.*)?$/i.test(value)&&!value.includes(' '))){navigate(/^[a-zA-Z][a-zA-Z0-9+.-]*:\/\//.test(value)?value:'https://'+value);return}navigate((providers[selectedMode]||providers.web)+encodeURIComponent(value))}
+form.addEventListener('submit',e=>{e.preventDefault();search()});
+document.querySelectorAll('.chip').forEach(b=>b.addEventListener('click',()=>{document.querySelectorAll('.chip').forEach(x=>x.classList.remove('active'));b.classList.add('active');mode=b.dataset.mode;q.focus()}));
+function quick(value,m){mode=m;document.querySelectorAll('.chip').forEach(x=>x.classList.toggle('active',x.dataset.mode===m));if(value)q.value=value;search(value||q.value,m)}
+function saveRecent(value){let a=JSON.parse(localStorage.getItem('yadav-search-recent')||'[]').filter(x=>x!==value);a.unshift(value);localStorage.setItem('yadav-search-recent',JSON.stringify(a.slice(0,12)));renderRecent()}
+function renderRecent(){let a=JSON.parse(localStorage.getItem('yadav-search-recent')||'[]');recentEl.innerHTML='';document.getElementById('recentSection').style.display=a.length?'block':'none';a.forEach(x=>{let s=document.createElement('span');s.textContent=x;s.onclick=()=>{q.value=x;search(x)};recentEl.appendChild(s)})}
+function clearRecent(){localStorage.removeItem('yadav-search-recent');renderRecent()}
+function openBrowser(){if(window.browserAPI?.openNewTab)window.browserAPI.openNewTab('https://www.google.com');else location.href='https://www.google.com'}
+function openHome(){navigate('file://'+location.pathname.split('/').slice(0,-1).join('/')+'/yadav-search.html')}
+function openChess(){if(window.browserAPI?.openNewTab)window.browserAPI.openNewTab('https://www.google.com/search?q=YadavBrowser+Chess');else search('YadavBrowser Chess')}
+let timer; q.addEventListener('input',()=>{clearTimeout(timer);let value=q.value.trim();if(!value){suggestions.classList.remove('show');return}timer=setTimeout(()=>{let items=[value+' news',value+' images',value+' videos'];suggestions.innerHTML=items.map(x=>'<div class="suggestion">⌕ '+escapeHtml(x)+'</div>').join('');suggestions.classList.add('show');suggestions.querySelectorAll('.suggestion').forEach((el,i)=>el.onclick=()=>{q.value=items[i];suggestions.classList.remove('show');search(items[i])})},120)});
+document.addEventListener('click',e=>{if(!suggestions.contains(e.target)&&e.target!==q)suggestions.classList.remove('show')});function escapeHtml(s){return s.replace(/[&<>'"]/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;',"'":'&#39;','"':'&quot;'}[c]))}renderRecent();
+</script></body></html>
