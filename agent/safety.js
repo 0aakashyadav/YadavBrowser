@@ -40,7 +40,7 @@ function assertText(content) {
     throw new Error('YB safety: file exceeds 512 KiB limit');
   }
   const secretPatterns = [
-    /-----BEGIN [A-Z ]+ PRIVATE KEY-----/,
+    /-----BEGIN (?:[A-Z0-9]+ )*PRIVATE KEY-----/,
     /AIza[0-9A-Za-z_-]{20,}/,
     /gh[pousr]_[A-Za-z0-9_]{20,}/
   ];
