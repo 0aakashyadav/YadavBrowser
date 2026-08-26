@@ -1,172 +1,594 @@
 <!DOCTYPE html>
 <html lang="en">
 <head>
-  <meta charset="UTF-8">
-  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Yadav Search — YadavBrowser</title>
 
-  <title>Yadav Search</title>
+<style>
+* {
+    box-sizing: border-box;
+}
 
-  <style>
-    * {
-      box-sizing: border-box;
+html, body {
+    margin: 0;
+    width: 100%;
+    min-height: 100%;
+    font-family: Arial, Helvetica, sans-serif;
+    color: #fff;
+}
+
+body {
+    min-height: 100vh;
+    overflow-x: hidden;
+    background:
+        radial-gradient(circle at 15% 20%, rgba(35, 110, 255, .18), transparent 30%),
+        radial-gradient(circle at 85% 70%, rgba(0, 200, 255, .12), transparent 30%),
+        linear-gradient(135deg, #07101f, #0b1730 45%, #050b16);
+}
+
+/* Background decoration */
+.bg-circle {
+    position: fixed;
+    width: 350px;
+    height: 350px;
+    border-radius: 50%;
+    filter: blur(100px);
+    opacity: .15;
+    pointer-events: none;
+}
+
+.circle-one {
+    background: #168cff;
+    top: -150px;
+    left: -120px;
+}
+
+.circle-two {
+    background: #00d5ff;
+    bottom: -180px;
+    right: -120px;
+}
+
+/* Header */
+header {
+    height: 72px;
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    padding: 0 32px;
+    border-bottom: 1px solid rgba(255,255,255,.08);
+    background: rgba(5, 12, 25, .55);
+    backdrop-filter: blur(18px);
+}
+
+.brand {
+    display: flex;
+    align-items: center;
+    gap: 12px;
+}
+
+.brand img {
+    width: 42px;
+    height: 42px;
+    object-fit: contain;
+}
+
+.brand-name {
+    font-size: 18px;
+    font-weight: 700;
+}
+
+.brand-sub {
+    font-size: 11px;
+    color: #91a2bd;
+    margin-top: 2px;
+}
+
+.aarya-launcher {
+    border: 1px solid rgba(80,180,255,.45);
+    background: rgba(30,130,220,.12);
+    color: #fff;
+    padding: 10px 20px;
+    border-radius: 22px;
+    cursor: pointer;
+    font-weight: 700;
+    transition: .2s;
+}
+
+.aarya-launcher:hover {
+    background: rgba(30,150,255,.25);
+    transform: translateY(-1px);
+}
+
+/* Main */
+main {
+    width: min(1050px, calc(100% - 40px));
+    margin: auto;
+    padding: 70px 0 50px;
+    text-align: center;
+}
+
+.logo {
+    width: 115px;
+    height: 115px;
+    object-fit: contain;
+    margin-bottom: 20px;
+    filter: drop-shadow(0 10px 25px rgba(0,150,255,.25));
+}
+
+h1 {
+    margin: 0;
+    font-size: clamp(42px, 7vw, 68px);
+    letter-spacing: -2px;
+}
+
+.tagline {
+    margin: 14px auto 34px;
+    color: #9eabc1;
+    font-size: 17px;
+}
+
+.highlight {
+    color: #55bfff;
+}
+
+/* Search */
+.search-box {
+    width: min(760px, 100%);
+    height: 62px;
+    margin: auto;
+    display: flex;
+    align-items: center;
+    padding: 5px;
+    border-radius: 34px;
+    background: rgba(255,255,255,.08);
+    border: 1px solid rgba(255,255,255,.15);
+    box-shadow: 0 15px 50px rgba(0,0,0,.25);
+    backdrop-filter: blur(15px);
+}
+
+.search-box input {
+    flex: 1;
+    height: 100%;
+    border: none;
+    outline: none;
+    background: transparent;
+    color: white;
+    padding: 0 22px;
+    font-size: 16px;
+}
+
+.search-box input::placeholder {
+    color: #8290a7;
+}
+
+.search-btn {
+    width: 54px;
+    height: 52px;
+    border: none;
+    border-radius: 28px;
+    background: linear-gradient(135deg, #168cff, #35c7ff);
+    color: white;
+    font-size: 20px;
+    cursor: pointer;
+    transition: .2s;
+}
+
+.search-btn:hover {
+    transform: scale(1.04);
+}
+
+/* Quick links */
+.quick-links {
+    display: grid;
+    grid-template-columns: repeat(5, 1fr);
+    gap: 14px;
+    margin: 45px auto;
+}
+
+.quick-card {
+    padding: 20px 10px;
+    border-radius: 16px;
+    background: rgba(255,255,255,.055);
+    border: 1px solid rgba(255,255,255,.08);
+    cursor: pointer;
+    transition: .25s;
+}
+
+.quick-card:hover {
+    transform: translateY(-5px);
+    background: rgba(255,255,255,.1);
+    border-color: rgba(70,180,255,.35);
+}
+
+.quick-icon {
+    font-size: 25px;
+    margin-bottom: 10px;
+}
+
+.quick-card strong {
+    display: block;
+    font-size: 14px;
+}
+
+.quick-card span {
+    color: #8290a7;
+    font-size: 11px;
+}
+
+/* Feature cards */
+.features {
+    display: grid;
+    grid-template-columns: 1fr 1fr;
+    gap: 18px;
+    margin-top: 15px;
+}
+
+.feature {
+    text-align: left;
+    padding: 26px;
+    border-radius: 20px;
+    background: linear-gradient(
+        135deg,
+        rgba(255,255,255,.08),
+        rgba(255,255,255,.035)
+    );
+    border: 1px solid rgba(255,255,255,.09);
+    transition: .25s;
+}
+
+.feature:hover {
+    transform: translateY(-3px);
+    border-color: rgba(60,180,255,.3);
+}
+
+.feature-icon {
+    font-size: 28px;
+    margin-bottom: 14px;
+}
+
+.feature h2 {
+    margin: 0 0 8px;
+    font-size: 20px;
+}
+
+.feature p {
+    margin: 0;
+    color: #91a2bd;
+    line-height: 1.5;
+    font-size: 14px;
+}
+
+.feature button {
+    margin-top: 18px;
+    padding: 9px 16px;
+    border-radius: 20px;
+    border: 1px solid rgba(80,180,255,.3);
+    background: rgba(30,130,220,.12);
+    color: #fff;
+    cursor: pointer;
+}
+
+/* Footer */
+footer {
+    text-align: center;
+    padding: 35px 20px;
+    color: #61718a;
+    font-size: 12px;
+}
+
+/* Mobile */
+@media (max-width: 750px) {
+    header {
+        padding: 0 18px;
     }
 
-    html,
-    body {
-      margin: 0;
-      width: 100%;
-      height: 100%;
+    main {
+        padding-top: 45px;
     }
 
-    body {
-      font-family: Arial, sans-serif;
-      background: #202124;
-      color: white;
-
-      display: flex;
-      justify-content: center;
-      align-items: center;
+    .quick-links {
+        grid-template-columns: repeat(2, 1fr);
     }
 
-    .container {
-      width: 90%;
-      max-width: 700px;
-      text-align: center;
+    .features {
+        grid-template-columns: 1fr;
     }
 
-    .logo {
-      width: 110px;
-      height: 110px;
-      margin: 0 auto 20px;
-      border-radius: 50%;
-      overflow: hidden;
+    .quick-card:last-child {
+        grid-column: span 2;
     }
-
-    .logo img {
-      width: 100%;
-      height: 100%;
-      object-fit: cover;
-    }
-
-    h1 {
-      margin: 0 0 30px;
-      font-size: 42px;
-      letter-spacing: 1px;
-    }
-
-    .search-box {
-      display: flex;
-      width: 100%;
-      height: 56px;
-
-      background: white;
-      border-radius: 30px;
-      overflow: hidden;
-    }
-
-    .search-box input {
-      flex: 1;
-      border: none;
-      outline: none;
-
-      padding: 0 24px;
-
-      font-size: 17px;
-      color: #202124;
-    }
-
-    .search-box button {
-      width: 70px;
-      border: none;
-
-      background: #4285f4;
-      color: white;
-
-      font-size: 22px;
-      cursor: pointer;
-    }
-
-    .search-box button:hover {
-      background: #3367d6;
-    }
-
-    .subtitle {
-      margin-top: 18px;
-      color: #aaa;
-      font-size: 14px;
-    }
-  </style>
+}
+</style>
 </head>
 
 <body>
 
-  <div class="container">
+<div class="bg-circle circle-one"></div>
+<div class="bg-circle circle-two"></div>
 
-    <div class="logo">
-      <img
-        src="logo.png"
-        alt="YadavBrowser"
-      >
+<header>
+    <div class="brand">
+        <img src="logo.png" alt="YadavBrowser">
+        <div>
+            <div class="brand-name">YadavBrowser</div>
+            <div class="brand-sub">Browse • Search • Ask</div>
+        </div>
     </div>
 
-    <h1>Yadav Search</h1>
+    <button class="aarya-launcher" onclick="openAarya()">
+        🤖 AARYA
+    </button>
+</header>
 
-    <form
-      class="search-box"
-      id="searchForm"
-    >
+<main>
 
-      <input
-        id="searchInput"
-        type="text"
-        placeholder="Search the web..."
-        autocomplete="off"
-        autofocus
-      >
+    <img class="logo" src="logo.png" alt="YadavBrowser Logo">
 
-      <button
-        type="submit"
-        aria-label="Search"
-      >
-        🔍
-      </button>
+    <h1>Yadav <span class="highlight">Search</span></h1>
 
+    <p class="tagline">
+        Browse. Search. Ask. — everything in one place.
+    </p>
+
+    <form class="search-box" onsubmit="searchWeb(event)">
+        <input
+            id="searchInput"
+            type="text"
+            placeholder="Search the web..."
+            autocomplete="off"
+        >
+        <button class="search-btn" type="submit">⌕</button>
     </form>
 
-    <div class="subtitle">
-      Search the web with Yadav Search
-    </div>
+    <section class="quick-links">
 
-  </div>
+        <div class="quick-card" onclick="searchFor('')">
+            <div class="quick-icon">🌐</div>
+            <strong>Web</strong>
+            <span>Search the web</span>
+        </div>
 
-  <script>
-    const searchForm =
-      document.getElementById("searchForm");
+        <div class="quick-card" onclick="openAarya()">
+            <div class="quick-icon">🤖</div>
+            <strong>AARYA</strong>
+            <span>AI assistant</span>
+        </div>
 
-    const searchInput =
-      document.getElementById("searchInput");
+        <div class="quick-card" onclick="searchFor('latest news')">
+            <div class="quick-icon">📰</div>
+            <strong>News</strong>
+            <span>Latest news</span>
+        </div>
 
-    searchForm.addEventListener(
-      "submit",
-      (event) => {
+        <div class="quick-card" onclick="searchFor('YouTube')">
+            <div class="quick-icon">▶️</div>
+            <strong>YouTube</strong>
+            <span>Watch videos</span>
+        </div>
 
-        event.preventDefault();
+        <div class="quick-card" onclick="searchFor('YadavBrowser')">
+            <div class="quick-icon">💻</div>
+            <strong>YadavBrowser</strong>
+            <span>About the browser</span>
+        </div>
 
-        const query =
-          searchInput.value.trim();
+    </section>
 
-        if (!query) {
-          return;
+    <section class="features">
+
+        <div class="feature">
+            <div class="feature-icon">🤖</div>
+            <h2>Meet AARYA</h2>
+            <p>
+                Your built-in AI assistant. Ask questions, understand
+                webpages, get explanations and interact with YadavBrowser.
+            </p>
+
+            <button onclick="openAarya()">
+                Ask AARYA →
+            </button>
+        </div>
+
+        <div class="feature">
+            <div class="feature-icon">⚡</div>
+            <h2>Everything in one place</h2>
+            <p>
+                Search the web, discover information and access your
+                browser tools without leaving the homepage.
+            </p>
+
+            <button onclick="document.getElementById('searchInput').focus()">
+                Start browsing →
+            </button>
+        </div>
+
+    </section>
+
+</main>
+
+<footer>
+    © 2026 YadavBrowser · Yadav Search · Powered by AARYA
+</footer>
+
+<script>
+
+function searchWeb(event) {
+    event.preventDefault();
+
+    const input = document.getElementById("searchInput");
+    const query = input.value.trim();
+
+    if (!query) {
+        input.focus();
+        return;
+    }
+
+    /*
+     * Let YadavBrowser handle the navigation/search.
+     * If the browser bridge is available, use it.
+     * Otherwise fall back to Google.
+     */
+    if (
+        window.browserAPI &&
+        typeof window.browserAPI.navigate === "function"
+    ) {
+        window.browserAPI.navigate(query);
+        return;
+    }
+
+    window.location.href =
+        "https://www.google.com/search?q=" +
+        encodeURIComponent(query);
+}
+
+
+function searchFor(query) {
+
+    const input = document.getElementById("searchInput");
+
+    if (!query) {
+        input.focus();
+        return;
+    }
+
+    input.value = query;
+
+    searchWeb({
+        preventDefault: function () {}
+    });
+}
+
+
+/*
+ * OPEN THE REAL AARYA
+ *
+ * ui-bootstrap.js creates the real AARYA
+ * launcher with id="aarya-launcher".
+ *
+ * We click that existing launcher instead
+ * of creating another AARYA system.
+ */
+function openAarya() {
+
+    const existingLauncher =
+        document.getElementById("aarya-launcher");
+
+    if (existingLauncher) {
+        existingLauncher.click();
+        return;
+    }
+
+    /*
+     * ui-bootstrap.js may not have injected the
+     * launcher yet. Give it a moment and retry.
+     */
+    let attempts = 0;
+
+    const timer = setInterval(() => {
+
+        const launcher =
+            document.getElementById("aarya-launcher");
+
+        if (launcher) {
+            clearInterval(timer);
+            launcher.click();
+            return;
         }
 
-        const url =
-          "https://www.google.com/search?q=" +
-          encodeURIComponent(query);
+        attempts++;
 
-        window.location.href = url;
-      }
+        if (attempts >= 20) {
+            clearInterval(timer);
+
+            console.error(
+                "AARYA launcher was not found."
+            );
+        }
+
+    }, 100);
+}
+
+
+/*
+ * Hide the automatically injected AARYA launcher.
+ *
+ * We keep the real launcher in the DOM so
+ * openAarya() can click it, but we don't show
+ * two AARYA buttons on screen.
+ */
+(function hideDuplicateAarya() {
+
+    function hide() {
+
+        const launcher =
+            document.getElementById("aarya-launcher");
+
+        if (launcher) {
+            launcher.style.setProperty(
+                "display",
+                "none",
+                "important"
+            );
+        }
+    }
+
+    hide();
+
+    const observer =
+        new MutationObserver(hide);
+
+    observer.observe(
+        document.documentElement,
+        {
+            childList: true,
+            subtree: true
+        }
     );
-  </script>
+
+})();
+
+
+/*
+ * ENTER KEY SUPPORT
+ */
+document.addEventListener(
+    "keydown",
+    function (event) {
+
+        if (
+            event.key === "Enter" &&
+            document.activeElement ===
+            document.getElementById("searchInput")
+        ) {
+            event.preventDefault();
+
+            searchWeb(event);
+        }
+
+    }
+);
+
+
+/*
+ * Focus the search box when the page loads.
+ */
+window.addEventListener(
+    "load",
+    function () {
+
+        const input =
+            document.getElementById("searchInput");
+
+        if (input) {
+            input.focus();
+        }
+
+    }
+);
+
+</script>
 
 </body>
 </html>
