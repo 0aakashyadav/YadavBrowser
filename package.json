@@ -2,7 +2,7 @@
   "name": "yadavbrowser",
   "version": "1.0.0",
   "description": "YadavBrowser - A simple Chromium-based web browser",
-  "main": "main.js",
+  "main": "aarya/bootstrap.js",
   "author": "Aakash",
   "license": "MIT",
   "scripts": {
