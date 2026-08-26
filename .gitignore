@@ -6,3 +6,4 @@ out/
 .env.*
 !.env.example
 *.log
+.yb-agent/
