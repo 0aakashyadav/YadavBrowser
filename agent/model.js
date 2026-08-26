@@ -1,6 +1,10 @@
 async function askGemini(prompt) {
   const apiKey = process.env.GEMINI_API_KEY;
-  if (!apiKey) throw new Error('GEMINI_API_KEY is not configured');
+  if (!apiKey) {
+    const error = new Error('GEMINI_API_KEY is not configured');
+    error.code = 'CONFIG_MISSING';
+    throw error;
+  }
 
   const model = process.env.GEMINI_MODEL || 'gemini-3.6-flash';
   const endpoint = `https://generativelanguage.googleapis.com/v1beta/models/${encodeURIComponent(model)}:generateContent?key=${encodeURIComponent(apiKey)}`;
@@ -13,7 +17,13 @@ async function askGemini(prompt) {
     })
   });
   const data = await response.json();
-  if (!response.ok) throw new Error(data?.error?.message || `Gemini HTTP ${response.status}`);
+  if (!response.ok) {
+    const message = data?.error?.message || `Gemini HTTP ${response.status}`;
+    const error = new Error(message);
+    if (response.status === 429 || /quota|rate.?limit|too many requests|high demand/i.test(message)) error.code = 'RATE_LIMIT';
+    if (response.status === 401 || response.status === 403) error.code = 'AUTH_OR_ACCESS';
+    throw error;
+  }
   return data?.candidates?.[0]?.content?.parts?.map(p => p.text || '').join('') || '';
 }
 
