@@ -1,30 +1,32 @@
 {
-  "buildCommand": "echo Static Yadav Search deployment",
+  "$schema": "https://openapi.vercel.sh/vercel.json",
+  "buildCommand": "echo Static YadavBrowser deployment",
   "outputDirectory": ".",
-  "rewrites": [
+  "routes": [
+    { "src": "/api/aarya", "dest": "/api/aarya.js" },
+    { "src": "/api/search", "dest": "/api/search.js" },
     {
-      "source": "/",
-      "has": [
-        {
-          "type": "host",
-          "value": "aarya.yadavaakash.in"
-        }
-      ],
-      "destination": "/aarya.html"
+      "src": "/.*",
+      "has": [{ "type": "host", "value": "aarya.yadavaakash.in" }],
+      "dest": "/aarya.html"
     },
     {
-      "source": "/",
-      "destination": "/yadav-search.html"
-    }
+      "src": "/.*",
+      "has": [{ "type": "host", "value": "browser.yadavaakash.in" }],
+      "dest": "/index-v2.html"
+    },
+    {
+      "src": "/.*",
+      "has": [{ "type": "host", "value": "search.yadavaakash.in" }],
+      "dest": "/yadav-search.html"
+    },
+    { "src": "/.*", "dest": "/yadav-search.html" }
   ],
   "headers": [
     {
-      "source": "/api/(.*)",
+      "src": "/api/(.*)",
       "headers": [
-        {
-          "key": "Cache-Control",
-          "value": "no-store"
-        }
+        { "key": "Cache-Control", "value": "no-store" }
       ]
     }
   ]
