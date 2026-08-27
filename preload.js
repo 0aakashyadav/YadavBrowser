@@ -24,6 +24,7 @@ contextBridge.exposeInMainWorld('browserAPI', {
   getDownloadsPath: () => ipcRenderer.invoke('downloads:path'),
   getDownloads: () => ipcRenderer.invoke('downloads:list'),
   clearDownloads: () => ipcRenderer.invoke('downloads:clear'),
+  openDownload: savePath => ipcRenderer.invoke('downloads:open', savePath),
   getBrowserState: () => ipcRenderer.invoke('browser:get-state'),
   clearBrowserData: () => ipcRenderer.invoke('browser:clear-data'),
 
