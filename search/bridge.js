@@ -4,7 +4,7 @@ const DEFAULT_TIMEOUT_MS = 10000;
 const DEFAULT_REGION = 'in-en';
 
 function baseUrl() {
-  return String(process.env.YADAV_SEARCH_URL || '').trim().replace(/\/$/, '');
+  return String(process.env.YADAV_SEARCH_URL || 'https://search.yadavaakash.in').trim().replace(/\/$/, '');
 }
 
 function enabled() {
@@ -185,11 +185,29 @@ async function requestSearch(payload = {}) {
   const q = String(payload.q || '').trim();
   if (!q || q.length > 500) throw new Error('Invalid search query.');
 
-  // Prefer a configured SearXNG deployment. Otherwise Yadav Search works
-  // immediately with its built-in privacy-preserving HTML provider.
-  if (baseUrl()) {
+  // Use the public Yadav Search API first. This keeps Electron and the web UI
+  // on the same backend and avoids provider-specific blocking in the browser.
+  const root = baseUrl();
+  if (root) {
+    try {
+      const params = new URLSearchParams({
+        q,
+        mode: String(payload.mode || 'web'),
+        page: String(Math.max(1, Number(payload.page) || 1)),
+        timeRange: String(payload.timeRange || ''),
+        safeSearch: String(Math.min(2, Math.max(0, Number(payload.safeSearch) || 1)))
+      });
+      const data = await fetchText(`${root}/api/search?${params.toString()}`);
+      const parsed = JSON.parse(data);
+      if (!parsed.error) return parsed;
+    } catch (error) {
+      console.warn('Yadav Search API failed, trying direct provider:', error.message);
+    }
+  }
+
+  if (process.env.YADAV_SEARCH_URL && baseUrl()) {
     try { return await requestSearx({ ...payload, q }); }
-    catch (error) { console.warn('Yadav Search SearXNG failed, using fallback:', error.message); }
+    catch (error) { console.warn('Configured SearXNG failed, using direct fallback:', error.message); }
   }
 
   return ddgSearch(payload);
