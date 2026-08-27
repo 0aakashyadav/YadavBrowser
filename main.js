@@ -293,6 +293,7 @@ ipcMain.handle('browser:get-state', () => ({ tabs: tabs.length, activeTab, histo
 ipcMain.handle('browser:clear-data', async () => { historyItems = []; bookmarks = []; writeJson(HISTORY_FILE(), historyItems); writeJson(BOOKMARKS_FILE(), bookmarks); await session.defaultSession.clearStorageData(); send('history-update', historyItems); send('bookmarks-update', bookmarks); sendBookmarkState(); return true; });
 
 try { require('./aarya/bridge').installAaryaIPC(); } catch (e) { console.warn('AARYA bridge unavailable:', e.message); }
+try { require('./search/bridge').installSearchIPC(); } catch (e) { console.warn('Yadav Search bridge unavailable:', e.message); }
 
 app.whenReady().then(() => { createWindow(); app.on('activate', () => { if (BrowserWindow.getAllWindows().length === 0) createWindow(); }); });
 app.on('window-all-closed', () => { if (process.platform !== 'darwin') app.quit(); });
