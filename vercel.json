@@ -3,8 +3,7 @@
   "buildCommand": "echo Static YadavBrowser deployment",
   "outputDirectory": ".",
   "routes": [
-    { "src": "/api/aarya", "dest": "/api/aarya.js" },
-    { "src": "/api/search", "dest": "/api/search.js" },
+    { "handle": "filesystem" },
     {
       "src": "/(.*)",
       "has": [{ "type": "host", "value": "aarya.yadavaakash.in" }],
