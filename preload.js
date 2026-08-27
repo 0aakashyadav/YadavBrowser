@@ -22,6 +22,11 @@ contextBridge.exposeInMainWorld('browserAPI', {
   removeHistory: url => ipcRenderer.invoke('history:remove', url),
 
   getDownloadsPath: () => ipcRenderer.invoke('downloads:path'),
+  getDownloads: () => ipcRenderer.invoke('downloads:list'),
+  clearDownloads: () => ipcRenderer.invoke('downloads:clear'),
+  openDownload: savePath => ipcRenderer.invoke('downloads:open', savePath),
+  showDownloadInFolder: savePath => ipcRenderer.invoke('downloads:show-in-folder', savePath),
+  aaryaStatus: () => ipcRenderer.invoke('aarya:status'),
   getBrowserState: () => ipcRenderer.invoke('browser:get-state'),
   clearBrowserData: () => ipcRenderer.invoke('browser:clear-data'),
 
@@ -50,10 +55,12 @@ contextBridge.exposeInMainWorld('browserAPI', {
   onBookmarksUpdate: cb => on('bookmarks-update', cb),
   onHistoryUpdate: cb => on('history-update', cb),
   onDownloadUpdate: cb => on('download-update', cb),
+  onDownloadsUpdate: cb => on('downloads-update', cb),
   onLoadingState: cb => on('loading-state', cb),
   onZoomUpdate: cb => on('zoom-update', cb),
   onShowHistory: cb => on('show-history', cb),
   onShowBookmarks: cb => on('show-bookmarks', cb),
+  onShowDownloads: cb => on('show-downloads', cb),
   onAbout: cb => on('about', cb),
   onOpenFind: cb => on('open-find', cb),
   onAaryaResponse: cb => on('aarya:response', cb)
