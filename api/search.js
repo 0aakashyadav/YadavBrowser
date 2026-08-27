@@ -33,7 +33,7 @@ export default async function handler(req, res) {
         console.warn('SearXNG failed; using built-in provider:', error?.message || error);
       }
     }
-    return res.status(200).json(await fetchDuckDuckGo(q, page, timeRange, safeSearch));
+    try { return res.status(200).json(await fetchBingRss(q, page, timeRange)); }\n    catch (bingError) {\n      console.warn('Bing RSS fallback failed; trying DuckDuckGo:', bingError?.message || bingError);\n      return res.status(200).json(await fetchDuckDuckGo(q, page, timeRange, safeSearch));\n    }
   } catch (error) {
     console.error('Yadav Search error:', error);
     return res.status(502).json({
@@ -41,6 +41,63 @@ export default async function handler(req, res) {
       code: error?.name === 'AbortError' ? 'UPSTREAM_TIMEOUT' : 'UPSTREAM_UNAVAILABLE'
     });
   }
+}
+
+
+async function fetchBingRss(q, page, timeRange) {
+  const params = new URLSearchParams({
+    q,
+    format: 'rss',
+    first: String((page - 1) * 10 + 1),
+    setmkt: 'en-IN'
+  });
+  const url = 'https://www.bing.com/search?' + params.toString();
+  const controller = new AbortController();
+  const timer = setTimeout(() => controller.abort(), 9000);
+  try {
+    const response = await fetch(url, {
+      headers: {
+        accept: 'application/rss+xml, application/xml, text/xml',
+        'user-agent': 'YadavSearch/1.0 (+https://search.yadavaakash.in)'
+      },
+      signal: controller.signal
+    });
+    const xml = await response.text();
+    if (!response.ok) throw new Error('Bing HTTP ' + response.status);
+    const results = parseBingRss(xml);
+    if (!results.length) throw new Error('Bing returned no results');
+    return {
+      provider: 'bing-rss',
+      query: q,
+      results,
+      suggestions: [],
+      numberOfResults: results.length
+    };
+  } finally {
+    clearTimeout(timer);
+  }
+}
+
+function xmlDecode(value) {
+  return decodeHtml(String(value || ''))
+    .replace(/<!\[CDATA\[([\s\S]*?)\]\]>/gi, '$1')
+    .trim();
+}
+
+function parseBingRss(xml) {
+  const results = [];
+  const itemRe = /<item\b[^>]*>([\s\S]*?)<\/item>/gi;
+  let match;
+  while ((match = itemRe.exec(xml))) {
+    const item = match[1];
+    const title = xmlDecode(item.match(/<title\b[^>]*>([\s\S]*?)<\/title>/i)?.[1] || '');
+    const url = safeUrl(xmlDecode(item.match(/<link\b[^>]*>([\s\S]*?)<\/link>/i)?.[1] || ''));
+    const content = stripTags(xmlDecode(item.match(/<description\b[^>]*>([\s\S]*?)<\/description>/i)?.[1] || ''));
+    if (!title || !url) continue;
+    results.push({ title: title.slice(0, 300), url, content: content.slice(0, 1000), engine: 'Bing' });
+    if (results.length >= 30) break;
+  }
+  return results;
 }
 
 async function fetchDuckDuckGo(q, page, timeRange, safeSearch) {
