@@ -2,13 +2,29 @@
   "buildCommand": "echo Static Yadav Search deployment",
   "outputDirectory": ".",
   "rewrites": [
-    { "source": "/", "destination": "/yadav-search.html" }
+    {
+      "source": "/",
+      "has": [
+        {
+          "type": "host",
+          "value": "aarya.yadavaakash.in"
+        }
+      ],
+      "destination": "/aarya.html"
+    },
+    {
+      "source": "/",
+      "destination": "/yadav-search.html"
+    }
   ],
   "headers": [
     {
       "source": "/api/(.*)",
       "headers": [
-        { "key": "Cache-Control", "value": "no-store" }
+        {
+          "key": "Cache-Control",
+          "value": "no-store"
+        }
       ]
     }
   ]
