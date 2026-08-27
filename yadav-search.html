@@ -29,7 +29,42 @@ function saveRecent(v){let a=JSON.parse(localStorage.getItem('yadav-search-recen
 function renderRecent(){const a=JSON.parse(localStorage.getItem('yadav-search-recent')||'[]');document.getElementById('recentList').innerHTML=a.map(x=>`<button onclick="runSearch(${JSON.stringify(x)})">${esc(x)}</button>`).join('')||'<span style="color:#777">No recent searches.</span>'}
 function clearRecent(){localStorage.removeItem('yadav-search-recent');renderRecent()}
 function setMode(m){mode=m;document.querySelectorAll('.tab').forEach(b=>b.classList.toggle('active',b.dataset.mode===m))}
-async function runSearch(value,keep=false){const valueClean=String(value||'').trim();if(!valueClean)return;if(direct(valueClean)){nav(valueClean);return}if(!keep)pageNo=1;lastQuery=valueClean;saveRecent(valueClean);document.getElementById('home').style.display='none';document.getElementById('searchPage').style.display='block';topQ.value=valueClean;document.getElementById('resultList').innerHTML='<div class="loading"><span class="spinner"></span>Searching the web…</div>';document.getElementById('meta').textContent='';document.getElementById('related').innerHTML='';document.getElementById('error').innerHTML='';window.scrollTo(0,0);try{if(!window.browserAPI?.searchWeb)throw new Error('YadavBrowser search bridge is unavailable. Start with npm start.');const data=await window.browserAPI.searchWeb({q:valueClean,mode,page:pageNo,timeRange,safeSearch});render(data)}catch(e){document.getElementById('error').innerHTML='<div class="error">Search failed: '+esc(e.message||e)+'</div>';document.getElementById('resultList').innerHTML='<div class="empty"><strong>No results yet</strong>Restart YadavBrowser and try again.</div>'}}
+function externalSearch(value){
+  const query=String(value||'').trim();
+  if(!query)return;
+  const url='https://www.google.com/search?q='+encodeURIComponent(query);
+  document.getElementById('provider').textContent='Web fallback';
+  document.getElementById('error').innerHTML='<div class="error">Yadav Search web backend is not available on GitHub Pages yet. Opening a web search instead.</div>';
+  document.getElementById('resultList').innerHTML='<div class="empty"><strong>Web search ready</strong><p style="color:#aaa">Your search is being opened in a new tab.</p><button onclick="window.open('+JSON.stringify(url)+',\'_blank\',\'noopener\')" style="margin-top:12px;border:1px solid #444;background:#222;color:#fff;border-radius:8px;padding:9px 14px;cursor:pointer">Open web results</button></div>';
+  window.open(url,'_blank','noopener');
+}
+async function runSearch(value,keep=false){
+  const valueClean=String(value||'').trim();
+  if(!valueClean)return;
+  if(direct(valueClean)){nav(valueClean);return}
+  if(!keep)pageNo=1;
+  lastQuery=valueClean;
+  saveRecent(valueClean);
+  document.getElementById('home').style.display='none';
+  document.getElementById('searchPage').style.display='block';
+  topQ.value=valueClean;
+  document.getElementById('resultList').innerHTML='<div class="loading"><span class="spinner"></span>Searching the web…</div>';
+  document.getElementById('meta').textContent='';
+  document.getElementById('related').innerHTML='';
+  document.getElementById('error').innerHTML='';
+  window.scrollTo(0,0);
+  try{
+    if(!window.browserAPI?.searchWeb){
+      externalSearch(valueClean);
+      return;
+    }
+    const data=await window.browserAPI.searchWeb({q:valueClean,mode,page:pageNo,timeRange,safeSearch});
+    render(data);
+  }catch(e){
+    document.getElementById('error').innerHTML='<div class="error">Search backend unavailable. Opening a web fallback.</div>';
+    externalSearch(valueClean);
+  }
+}
 function render(data){document.getElementById('provider').textContent=data.provider==='searxng'?'SearXNG':'Yadav built-in';const items=data.results||[];document.getElementById('meta').textContent=`${items.length} results · page ${pageNo}`;const list=document.getElementById('resultList');list.innerHTML='';if(!items.length){list.innerHTML='<div class="empty"><strong>No results found</strong>Try a different query.</div>'}items.forEach(item=>{const r=document.createElement('article');r.className='result';r.innerHTML=`<div class="site">${esc(item.url)}</div><a class="title" href="#">${esc(item.title)}</a><p class="snippet">${esc(item.content||'No description available.')}</p><div class="result-tools"><span>${esc(item.engine||'Yadav Search')}</span><span>•</span><button class="save">Save</button><button class="newtab">Open in new tab</button></div>`;r.querySelector('.title').onclick=e=>{e.preventDefault();nav(item.url)};r.querySelector('.save').onclick=()=>{let a=JSON.parse(localStorage.getItem('yadav-saved')||'[]');if(!a.some(x=>x.url===item.url)){a.push({title:item.title,url:item.url});localStorage.setItem('yadav-saved',JSON.stringify(a))}};r.querySelector('.newtab').onclick=()=>window.browserAPI?.openNewTab?window.browserAPI.openNewTab(item.url):nav(item.url);list.appendChild(r)});const related=[...new Set([lastQuery+' latest',lastQuery+' wikipedia',...(data.suggestions||[])])].slice(0,6);document.getElementById('related').innerHTML=related.map(x=>`<button onclick="runSearch(${JSON.stringify(x)})">${esc(x)}</button>`).join('')}
 function changePage(delta){if(!lastQuery)return;pageNo=Math.max(1,pageNo+delta);runSearch(lastQuery,true)}
 document.getElementById('homeForm').addEventListener('submit',e=>{e.preventDefault();runSearch(q.value)});document.getElementById('topForm').addEventListener('submit',e=>{e.preventDefault();runSearch(topQ.value)});document.querySelectorAll('.tab').forEach(b=>b.onclick=()=>{setMode(b.dataset.mode);if(lastQuery)runSearch(lastQuery)});document.querySelectorAll('.time').forEach(b=>b.onclick=()=>{timeRange=b.dataset.time;document.querySelectorAll('.time').forEach(x=>x.classList.remove('active'));b.classList.add('active');if(lastQuery)runSearch(lastQuery,true)});document.getElementById('safeBtn').onclick=()=>{safeSearch=safeSearch===1?2:safeSearch===2?0:1;document.getElementById('safeBtn').textContent='Safe Search: '+(safeSearch===2?'Strict':safeSearch===0?'Off':'Moderate');if(lastQuery)runSearch(lastQuery,true)};function quick(value,m){setMode(m);if(value)runSearch(value);else q.focus()}renderRecent();q.focus();
