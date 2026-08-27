@@ -1,4 +1,4 @@
-const { app, BrowserWindow, BrowserView, ipcMain, session, Menu } = require('electron');
+const { app, BrowserWindow, BrowserView, ipcMain, session, Menu, shell } = require('electron');
 const path = require('path');
 const fs = require('fs');
 
@@ -276,6 +276,7 @@ ipcMain.handle('history:remove', (_, url) => { const before = historyItems.lengt
 ipcMain.handle('downloads:path', () => app.getPath('downloads'));
 ipcMain.handle('downloads:list', () => downloads);
 ipcMain.handle('downloads:clear', () => { downloads = []; send('downloads-update', downloads); return true; });
+ipcMain.handle('downloads:open', async (_, savePath) => { if (!savePath || !path.isAbsolute(savePath)) return false; return (await shell.openPath(savePath)) === ''; });
 ipcMain.handle('browser:get-state', () => ({ tabs: tabs.length, activeTab, historyCount: historyItems.length, bookmarkCount: bookmarks.length, private: !!tabs[activeTab]?.private }));
 ipcMain.handle('browser:clear-data', async () => { historyItems = []; bookmarks = []; writeJson(HISTORY_FILE(), historyItems); writeJson(BOOKMARKS_FILE(), bookmarks); await session.defaultSession.clearStorageData(); send('history-update', historyItems); send('bookmarks-update', bookmarks); sendBookmarkState(); return true; });
 
