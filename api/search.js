@@ -1,11 +1,14 @@
-export default async function handler(req, res) {
+const { URL, URLSearchParams } = require('node:url');
+
+const ALLOWED_ORIGINS = new Set([
+  'https://search.yadavaakash.in',
+  'https://yadav-browser.vercel.app',
+  'https://yadav-browser-aakash-ccb7.vercel.app'
+]);
+
+module.exports = async function handler(req, res) {
   const origin = String(req.headers?.origin || '');
-  const allowedOrigins = new Set([
-    'https://search.yadavaakash.in',
-    'https://yadav-browser.vercel.app',
-    'https://yadav-browser-aakash-ccb7.vercel.app'
-  ]);
-  if (allowedOrigins.has(origin)) res.setHeader('Access-Control-Allow-Origin', origin);
+  if (ALLOWED_ORIGINS.has(origin)) res.setHeader('Access-Control-Allow-Origin', origin);
   res.setHeader('Vary', 'Origin');
   res.setHeader('Access-Control-Allow-Methods', 'GET, OPTIONS');
   res.setHeader('Access-Control-Allow-Headers', 'Content-Type');
@@ -18,22 +21,53 @@ export default async function handler(req, res) {
   if (!q) return res.status(400).json({ error: 'Missing query' });
 
   const page = Math.max(1, Math.min(20, Number.parseInt(req.query?.page || '1', 10) || 1));
-  const modes = ['web', 'news', 'images', 'videos', 'maps', 'shopping'];
-  const mode = modes.includes(String(req.query?.mode)) ? String(req.query.mode) : 'web';
+  const mode = ['web', 'news', 'images', 'videos', 'maps', 'shopping'].includes(String(req.query?.mode))
+    ? String(req.query.mode) : 'web';
   const timeRange = ['', 'day', 'week', 'month', 'year'].includes(String(req.query?.timeRange))
     ? String(req.query?.timeRange) : '';
   const safeSearch = Math.max(0, Math.min(2, Number.parseInt(req.query?.safeSearch || '1', 10) || 0));
 
   try {
-    const searxng = String(process.env.SEARXNG_URL || 'https://searx.tiekoetter.com').trim().replace(/\/$/, '');
-    if (searxng) {
+    // A SearXNG endpoint is optional. Never depend on a public instance by default:
+    // public instances frequently rate-limit Vercel serverless traffic.
+    const configured = String(process.env.SEARXNG_URL || '').trim().replace(/\/$/, '');
+    if (configured) {
       try {
-        return res.status(200).json(await fetchSearx(searxng, q, mode, page, timeRange, safeSearch));
+        return res.status(200).json(await fetchSearx(configured, q, mode, page, timeRange, safeSearch));
       } catch (error) {
-        console.warn('SearXNG failed; using built-in provider:', error?.message || error);
+        console.warn('Configured SearXNG failed:', error?.message || error);
       }
     }
-    try { return res.status(200).json(await fetchBingRss(q, page, timeRange)); }\n    catch (bingError) {\n      console.warn('Bing RSS fallback failed; trying DuckDuckGo:', bingError?.message || bingError);\n      return res.status(200).json(await fetchDuckDuckGo(q, page, timeRange, safeSearch));\n    }
+
+    // News has its own RSS source. Other modes use Bing RSS first.
+    if (mode === 'news') {
+      try {
+        return res.status(200).json(await fetchGoogleNewsRss(q, page));
+      } catch (error) {
+        console.warn('Google News RSS failed:', error?.message || error);
+      }
+    }
+
+    try {
+      return res.status(200).json(await fetchBingRss(q, page, mode, timeRange));
+    } catch (error) {
+      console.warn('Bing RSS failed:', error?.message || error);
+    }
+
+    try {
+      return res.status(200).json(await fetchYahooRss(q, page));
+    } catch (error) {
+      console.warn('Yahoo RSS failed:', error?.message || error);
+    }
+
+    return res.status(200).json({
+      provider: 'yadav-fallback',
+      query: q,
+      results: [],
+      suggestions: [],
+      numberOfResults: 0,
+      warning: 'Search providers temporarily unavailable.'
+    });
   } catch (error) {
     console.error('Yadav Search error:', error);
     return res.status(502).json({
@@ -41,92 +75,114 @@ export default async function handler(req, res) {
       code: error?.name === 'AbortError' ? 'UPSTREAM_TIMEOUT' : 'UPSTREAM_UNAVAILABLE'
     });
   }
+};
+
+async function fetchText(url, headers = {}, timeoutMs = 9000) {
+  const controller = new AbortController();
+  const timer = setTimeout(() => controller.abort(), timeoutMs);
+  try {
+    const response = await fetch(url, {
+      headers: {
+        accept: 'application/rss+xml, application/xml, text/xml, text/html;q=0.9, */*;q=0.8',
+        'user-agent': 'YadavSearch/1.1 (+https://search.yadavaakash.in)',
+        ...headers
+      },
+      signal: controller.signal
+    });
+    const body = await response.text();
+    if (!response.ok) throw new Error('HTTP ' + response.status);
+    return body;
+  } finally {
+    clearTimeout(timer);
+  }
 }
 
-
-async function fetchBingRss(q, page, timeRange) {
+async function fetchBingRss(q, page, mode, timeRange) {
   const params = new URLSearchParams({
     q,
     format: 'rss',
     first: String((page - 1) * 10 + 1),
     setmkt: 'en-IN'
   });
-  const url = 'https://www.bing.com/search?' + params.toString();
-  const controller = new AbortController();
-  const timer = setTimeout(() => controller.abort(), 9000);
-  try {
-    const response = await fetch(url, {
-      headers: {
-        accept: 'application/rss+xml, application/xml, text/xml',
-        'user-agent': 'YadavSearch/1.0 (+https://search.yadavaakash.in)'
-      },
-      signal: controller.signal
-    });
-    const xml = await response.text();
-    if (!response.ok) throw new Error('Bing HTTP ' + response.status);
-    const results = parseBingRss(xml);
-    if (!results.length) throw new Error('Bing returned no results');
-    return {
-      provider: 'bing-rss',
-      query: q,
-      results,
-      suggestions: [],
-      numberOfResults: results.length
-    };
-  } finally {
-    clearTimeout(timer);
+  if (timeRange) {
+    const freshness = { day: 'Day', week: 'Week', month: 'Month', year: 'Year' }[timeRange];
+    if (freshness) params.set('filters', 'ex1:"ez5_' + freshness + '"');
   }
+  const xml = await fetchText('https://www.bing.com/search?' + params);
+  const results = parseRss(xml, 'Bing', mode);
+  if (!results.length) throw new Error('Bing returned no results');
+  return makeResponse('bing-rss', q, results);
 }
 
-function xmlDecode(value) {
-  return decodeHtml(String(value || ''))
-    .replace(/<!\[CDATA\[([\s\S]*?)\]\]>/gi, '$1')
-    .trim();
+async function fetchYahooRss(q, page) {
+  const url = 'https://search.yahoo.com/rss?' + new URLSearchParams({
+    p: q,
+    n: '20',
+    b: String((page - 1) * 20 + 1)
+  });
+  const xml = await fetchText(url);
+  const results = parseRss(xml, 'Yahoo', 'web');
+  if (!results.length) throw new Error('Yahoo returned no results');
+  return makeResponse('yahoo-rss', q, results);
 }
 
-function parseBingRss(xml) {
+async function fetchGoogleNewsRss(q, page) {
+  const url = 'https://news.google.com/rss/search?' + new URLSearchParams({
+    q,
+    hl: 'en-IN',
+    gl: 'IN',
+    ceid: 'IN:en'
+  });
+  const xml = await fetchText(url);
+  const results = parseRss(xml, 'Google News', 'news').slice((page - 1) * 10, page * 10);
+  if (!results.length) throw new Error('Google News returned no results');
+  return makeResponse('google-news-rss', q, results);
+}
+
+function makeResponse(provider, query, results) {
+  return {
+    provider,
+    query,
+    results,
+    suggestions: [],
+    numberOfResults: results.length
+  };
+}
+
+function parseRss(xml, engine, category) {
   const results = [];
   const itemRe = /<item\b[^>]*>([\s\S]*?)<\/item>/gi;
   let match;
   while ((match = itemRe.exec(xml))) {
     const item = match[1];
-    const title = xmlDecode(item.match(/<title\b[^>]*>([\s\S]*?)<\/title>/i)?.[1] || '');
-    const url = safeUrl(xmlDecode(item.match(/<link\b[^>]*>([\s\S]*?)<\/link>/i)?.[1] || ''));
-    const content = stripTags(xmlDecode(item.match(/<description\b[^>]*>([\s\S]*?)<\/description>/i)?.[1] || ''));
+    const title = cleanXml(readTag(item, 'title'));
+    const rawUrl = cleanXml(readTag(item, 'link') || readTag(item, 'guid'));
+    const url = safeUrl(rawUrl);
+    const description = stripTags(cleanXml(readTag(item, 'description') || ''));
+    const pubDate = cleanXml(readTag(item, 'pubDate') || readTag(item, 'published') || '');
     if (!title || !url) continue;
-    results.push({ title: title.slice(0, 300), url, content: content.slice(0, 1000), engine: 'Bing' });
+    results.push({
+      title: title.slice(0, 300),
+      url,
+      content: description.slice(0, 1000),
+      engine,
+      category,
+      publishedDate: pubDate || null
+    });
     if (results.length >= 30) break;
   }
   return results;
 }
 
-async function fetchDuckDuckGo(q, page, timeRange, safeSearch) {
-  const params = new URLSearchParams({
-    q,
-    kl: 'in-en',
-    kp: safeSearch === 2 ? '1' : safeSearch === 0 ? '-2' : '-1',
-    s: String((page - 1) * 30)
-  });
-  const df = ({ day: 'd', week: 'w', month: 'm', year: 'y' })[timeRange];
-  if (df) params.set('df', df);
+function readTag(value, tag) {
+  const match = String(value).match(new RegExp('<' + tag + '\\b[^>]*>([\\s\\S]*?)<\\/' + tag + '>', 'i'));
+  return match ? match[1] : '';
+}
 
-  const controller = new AbortController();
-  const timer = setTimeout(() => controller.abort(), 9000);
-  try {
-    const response = await fetch('https://html.duckduckgo.com/html/?' + params.toString(), {
-      headers: {
-        accept: 'text/html,application/xhtml+xml',
-        'user-agent': 'YadavSearch/1.0 (+https://search.yadavaakash.in)'
-      },
-      signal: controller.signal
-    });
-    const html = await response.text();
-    if (!response.ok) throw new Error('DuckDuckGo HTTP ' + response.status);
-    const results = parseDuckDuckGo(html).slice(0, 30);
-    return { provider: 'yadav-built-in', query: q, results, suggestions: [], numberOfResults: results.length };
-  } finally {
-    clearTimeout(timer);
-  }
+function cleanXml(value) {
+  return decodeHtml(String(value || ''))
+    .replace(/<!\[CDATA\[([\s\S]*?)\]\]>/gi, '$1')
+    .trim();
 }
 
 function decodeHtml(value) {
@@ -148,91 +204,38 @@ function stripTags(value) {
 
 function safeUrl(value) {
   try {
-    const u = new URL(value);
+    const u = new URL(String(value || '').trim());
     return u.protocol === 'http:' || u.protocol === 'https:' ? u.toString() : '';
   } catch {
     return '';
   }
 }
 
-function parseDuckDuckGoUrl(value) {
-  const raw = decodeHtml(value);
-  try {
-    const u = new URL(raw, 'https://duckduckgo.com');
-    return safeUrl(u.searchParams.get('uddg') || raw);
-  } catch {
-    return safeUrl(raw);
-  }
-}
-
-function parseDuckDuckGo(html) {
-  const results = [];
-  const seen = new Set();
-  const linkRe = /<a[^>]+class=["'][^"']*result__a[^"']*["'][^>]*href=["']([^"']+)["'][^>]*>([\s\S]*?)<\/a>/gi;
-  let match;
-
-  while ((match = linkRe.exec(html))) {
-    const url = parseDuckDuckGoUrl(match[1]);
-    const title = stripTags(match[2]);
-    if (!url || !title || seen.has(url)) continue;
-
-    const start = Math.max(0, match.index - 1200);
-    const block = html.slice(start, Math.min(html.length, match.index + 5000));
-    const snippet =
-      block.match(/class=["'][^"']*result__snippet[^"']*["'][^>]*>([\s\S]*?)<\/div>/i)?.[1] ||
-      block.match(/class=["'][^"']*result__snippet[^"']*["'][^>]*>([\s\S]*?)<\/span>/i)?.[1] ||
-      '';
-
-    seen.add(url);
-    results.push({
-      title: title.slice(0, 300),
-      url,
-      content: stripTags(snippet).slice(0, 1000),
-      engine: 'Yadav Search'
-    });
-    if (results.length >= 30) break;
-  }
-  return results;
-}
-
-async function fetchSearx(searxng, q, mode, page, timeRange, safeSearch) {
-  const categories = mode === 'web' ? 'general' : mode;
-  const url = new URL(searxng + '/search');
+async function fetchSearx(root, q, mode, page, timeRange, safeSearch) {
+  const url = new URL(root + '/search');
   url.searchParams.set('q', q);
   url.searchParams.set('format', 'json');
-  url.searchParams.set('categories', categories);
+  url.searchParams.set('categories', mode === 'web' ? 'general' : mode);
   url.searchParams.set('pageno', String(page));
   url.searchParams.set('safesearch', String(safeSearch));
   if (timeRange) url.searchParams.set('time_range', timeRange);
 
-  const controller = new AbortController();
-  const timer = setTimeout(() => controller.abort(), 9000);
-  try {
-    const response = await fetch(url, {
-      headers: { accept: 'application/json', 'user-agent': 'YadavSearch/1.0 (+https://search.yadavaakash.in)' },
-      signal: controller.signal
-    });
-    const body = await response.text();
-    if (!response.ok) throw new Error('SearXNG HTTP ' + response.status);
+  const body = await fetchText(url.toString(), { accept: 'application/json' });
+  const data = JSON.parse(body);
+  const results = Array.isArray(data.results) ? data.results.map(item => ({
+    title: String(item.title || '').slice(0, 300),
+    url: safeUrl(item.url),
+    content: String(item.content || '').slice(0, 1000),
+    engine: String(item.engine || 'SearXNG'),
+    category: String(item.category || mode),
+    publishedDate: item.publishedDate || item.published_date || null
+  })).filter(x => x.title && x.url).slice(0, 30) : [];
 
-    const data = JSON.parse(body);
-    const results = Array.isArray(data.results)
-      ? data.results.slice(0, 30).map(item => ({
-          title: String(item.title || '').slice(0, 300),
-          url: String(item.url || ''),
-          content: String(item.content || '').slice(0, 1000),
-          engine: String(item.engine || 'SearXNG')
-        })).filter(item => /^https?:\/\//i.test(item.url))
-      : [];
-
-    return {
-      provider: 'searxng',
-      query: q,
-      results,
-      suggestions: Array.isArray(data.suggestions) ? data.suggestions.slice(0, 8).map(String) : [],
-      numberOfResults: Number(data.number_of_results || results.length)
-    };
-  } finally {
-    clearTimeout(timer);
-  }
+  return {
+    provider: 'searxng',
+    query: q,
+    results,
+    suggestions: Array.isArray(data.suggestions) ? data.suggestions.slice(0, 8).map(String) : [],
+    numberOfResults: Number(data.number_of_results || results.length)
+  };
 }
