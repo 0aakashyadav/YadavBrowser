@@ -75,7 +75,8 @@ function normalizeUrl(input) {
 function createTab(url = HOME_URL, options = {}) {
   const isPrivate = !!options.private;
   const partition = isPrivate ? `yadav-private-${Date.now()}-${Math.random().toString(36).slice(2)}` : undefined;
-  const view = new BrowserView({ webPreferences: { contextIsolation: true, nodeIntegration: false, partition } });
+  const isSearchTab = url === HOME_URL;
+  const view = new BrowserView({ webPreferences: { contextIsolation: true, nodeIntegration: false, partition, preload: path.join(__dirname, isSearchTab ? 'search/preload.js' : 'preload.js') } });
   const tab = { view, title: isPrivate ? 'Private Tab' : 'New Tab', url, private: isPrivate, partition };
   tabs.push(tab);
 
