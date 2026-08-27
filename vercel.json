@@ -1,4 +1,6 @@
 {
+  "buildCommand": "echo Static Yadav Search deployment",
+  "outputDirectory": ".",
   "rewrites": [
     { "source": "/", "destination": "/yadav-search.html" }
   ],
