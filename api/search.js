@@ -25,7 +25,7 @@ export default async function handler(req, res) {
   const safeSearch = Math.max(0, Math.min(2, Number.parseInt(req.query?.safeSearch || '1', 10) || 0));
 
   try {
-    const searxng = String(process.env.SEARXNG_URL || '').trim().replace(/\/$/, '');
+    const searxng = String(process.env.SEARXNG_URL || 'https://searx.tiekoetter.com').trim().replace(/\/$/, '');
     if (searxng) {
       try {
         return res.status(200).json(await fetchSearx(searxng, q, mode, page, timeRange, safeSearch));
