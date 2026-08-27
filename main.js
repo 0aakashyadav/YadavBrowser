@@ -276,7 +276,18 @@ ipcMain.handle('history:remove', (_, url) => { const before = historyItems.lengt
 ipcMain.handle('downloads:path', () => app.getPath('downloads'));
 ipcMain.handle('downloads:list', () => downloads);
 ipcMain.handle('downloads:clear', () => { downloads = []; send('downloads-update', downloads); return true; });
-ipcMain.handle('downloads:open', async (_, savePath) => { if (!savePath || !path.isAbsolute(savePath)) return false; return (await shell.openPath(savePath)) === ''; });
+ipcMain.handle('downloads:open', async (_, savePath) => {
+  if (!savePath || !path.isAbsolute(savePath)) return { success: false, error: 'Invalid download path.' };
+  if (!fs.existsSync(savePath)) return { success: false, error: 'Downloaded file no longer exists.' };
+  const error = await shell.openPath(savePath);
+  return error ? { success: false, error } : { success: true };
+});
+ipcMain.handle('downloads:show-in-folder', (_, savePath) => {
+  if (!savePath || !path.isAbsolute(savePath) || !fs.existsSync(savePath)) return false;
+  shell.showItemInFolder(savePath);
+  return true;
+});
+ipcMain.handle('aarya:status', () => ({ configured: !!process.env.GEMINI_API_KEY, provider: process.env.AARYA_PROVIDER || 'gemini', model: process.env.AARYA_GEMINI_MODEL || 'gemini-3.7-flash' }));
 ipcMain.handle('browser:get-state', () => ({ tabs: tabs.length, activeTab, historyCount: historyItems.length, bookmarkCount: bookmarks.length, private: !!tabs[activeTab]?.private }));
 ipcMain.handle('browser:clear-data', async () => { historyItems = []; bookmarks = []; writeJson(HISTORY_FILE(), historyItems); writeJson(BOOKMARKS_FILE(), bookmarks); await session.defaultSession.clearStorageData(); send('history-update', historyItems); send('bookmarks-update', bookmarks); sendBookmarkState(); return true; });
 
