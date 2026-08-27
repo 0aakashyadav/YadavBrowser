@@ -3,7 +3,10 @@
   "buildCommand": "echo Static YadavBrowser deployment",
   "outputDirectory": ".",
   "routes": [
-    { "handle": "filesystem" },
+    {
+      "src": "/api/(.*)",
+      "dest": "/api/$1"
+    },
     {
       "src": "/(.*)",
       "has": [{ "type": "host", "value": "aarya.yadavaakash.in" }],
@@ -19,6 +22,7 @@
       "has": [{ "type": "host", "value": "search.yadavaakash.in" }],
       "dest": "/yadav-search.html"
     },
+    { "handle": "filesystem" },
     { "src": "/(.*)", "dest": "/yadav-search.html" }
   ],
   "headers": [
