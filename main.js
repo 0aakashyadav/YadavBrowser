@@ -6,6 +6,8 @@ let win = null;
 let tabs = [];
 let activeTab = 0;
 let findRequestId = 0;
+let downloads = [];
+const downloadSessions = new WeakSet();
 
 const TOOLBAR_HEIGHT = 108;
 const HOME_URL = `file://${path.join(__dirname, 'yadav-search.html')}`;
@@ -31,6 +33,7 @@ if (!Array.isArray(bookmarks)) bookmarks = [];
 function addHistory(url, title) {
   if (!url || url.startsWith('file://') || url.startsWith('devtools://') || url.startsWith('about:')) return;
   const item = { title: title || 'Untitled', url, visitedAt: new Date().toISOString() };
+  historyItems = historyItems.filter(x => x.url !== url);
   historyItems.unshift(item);
   historyItems = historyItems.slice(0, 2000);
   writeJson(HISTORY_FILE(), historyItems);
@@ -71,7 +74,7 @@ function normalizeUrl(input) {
 
 function createTab(url = HOME_URL, options = {}) {
   const isPrivate = !!options.private;
-  const partition = isPrivate ? `persist:yadav-private-${Date.now()}-${Math.random().toString(36).slice(2)}` : undefined;
+  const partition = isPrivate ? `yadav-private-${Date.now()}-${Math.random().toString(36).slice(2)}` : undefined;
   const view = new BrowserView({ webPreferences: { contextIsolation: true, nodeIntegration: false, partition } });
   const tab = { view, title: isPrivate ? 'Private Tab' : 'New Tab', url, private: isPrivate, partition };
   tabs.push(tab);
@@ -96,15 +99,51 @@ function createTab(url = HOME_URL, options = {}) {
   view.webContents.on('render-process-gone', (_, details) => console.error('Renderer gone:', details.reason));
 
   view.webContents.on('before-input-event', (event, input) => handleShortcut(event, input));
-  view.webContents.session.on('will-download', (_, item) => {
-    const filename = item.getFilename();
-    const savePath = path.join(app.getPath('downloads'), filename);
-    item.setSavePath(savePath);
-    send('download-update', { filename, savePath, state: 'starting', receivedBytes: 0, totalBytes: item.getTotalBytes() });
-    item.on('updated', (_, state) => send('download-update', { filename, savePath, state, receivedBytes: item.getReceivedBytes(), totalBytes: item.getTotalBytes() }));
-    item.once('done', (_, state) => send('download-update', { filename, savePath, state, receivedBytes: item.getReceivedBytes(), totalBytes: item.getTotalBytes() }));
-  });
+  installDownloadHandling(tab);
   return tab;
+}
+
+function installDownloadHandling(tab) {
+  const downloadSession = tab.view.webContents.session;
+  if (downloadSessions.has(downloadSession)) return;
+  downloadSessions.add(downloadSession);
+
+  downloadSession.on('will-download', (_, item) => {
+    const filename = item.getFilename() || 'download';
+    const downloadsDir = app.getPath('downloads');
+    let savePath = path.join(downloadsDir, filename);
+    let counter = 1;
+    const ext = path.extname(filename);
+    const stem = ext ? filename.slice(0, -ext.length) : filename;
+    while (fs.existsSync(savePath)) savePath = path.join(downloadsDir, `${stem} (${counter++})${ext}`);
+
+    item.setSavePath(savePath);
+    const record = {
+      id: `${Date.now()}-${Math.random().toString(36).slice(2)}`,
+      filename: path.basename(savePath),
+      savePath,
+      state: 'starting',
+      receivedBytes: 0,
+      totalBytes: item.getTotalBytes(),
+      startedAt: new Date().toISOString(),
+      private: !!tab.private
+    };
+    downloads.unshift(record);
+    downloads = downloads.slice(0, 100);
+    send('download-update', record);
+    send('downloads-update', downloads);
+
+    item.on('updated', (_, state) => {
+      Object.assign(record, { state, receivedBytes: item.getReceivedBytes(), totalBytes: item.getTotalBytes() });
+      send('download-update', record);
+      send('downloads-update', downloads);
+    });
+    item.once('done', (_, state) => {
+      Object.assign(record, { state, receivedBytes: item.getReceivedBytes(), totalBytes: item.getTotalBytes(), finishedAt: new Date().toISOString() });
+      send('download-update', record);
+      send('downloads-update', downloads);
+    });
+  });
 }
 
 function createNewTab(url = HOME_URL, options = {}) {
@@ -150,6 +189,7 @@ function handleShortcut(event, input) {
   else if (input.control && !input.alt && !input.shift && key === 'r') { event.preventDefault(); tabs[activeTab]?.view.webContents.reload(); }
   else if (input.control && !input.alt && !input.shift && key === 'd') { event.preventDefault(); bookmarkActivePage(); }
   else if (input.control && !input.alt && !input.shift && key === 'h') { event.preventDefault(); send('show-history', historyItems); }
+  else if (input.control && !input.alt && input.shift && key === 'j') { event.preventDefault(); send('show-downloads', downloads); }
   else if (input.control && input.shift && key === 'b') { event.preventDefault(); send('show-bookmarks', bookmarks); }
   else if (input.control && input.shift && key === 'i') { event.preventDefault(); tabs[activeTab]?.view.webContents.openDevTools({ mode: 'detach' }); }
   else if (input.control && (key === '+' || key === '=')) { event.preventDefault(); zoom(0.1); }
@@ -185,6 +225,7 @@ function createMenu() {
       { label: 'Fullscreen', accelerator: 'F11', click: toggleFullscreen }
     ]},
     { label: 'History', submenu: [{ label: 'Show History', accelerator: 'CmdOrCtrl+H', click: () => send('show-history', historyItems) }, { label: 'Clear History', click: () => { historyItems = []; writeJson(HISTORY_FILE(), historyItems); send('history-update', historyItems); } }] },
+    { label: 'Downloads', submenu: [{ label: 'Show Downloads', accelerator: 'CmdOrCtrl+Shift+J', click: () => send('show-downloads', downloads) }, { label: 'Clear Download List', click: () => { downloads = []; send('downloads-update', downloads); } }] },
     { label: 'Bookmarks', submenu: [{ label: 'Show Bookmarks', accelerator: 'CmdOrCtrl+Shift+B', click: () => send('show-bookmarks', bookmarks) }, { label: 'Bookmark This Page', accelerator: 'CmdOrCtrl+D', click: bookmarkActivePage }] },
     { label: 'Window', submenu: [{ role: 'minimize' }, { role: 'close' }] },
     { label: 'Help', submenu: [{ label: 'About YadavBrowser', click: () => send('about') }] }
@@ -233,6 +274,8 @@ ipcMain.handle('history:list', () => historyItems);
 ipcMain.handle('history:clear', () => { historyItems = []; writeJson(HISTORY_FILE(), historyItems); send('history-update', historyItems); return true; });
 ipcMain.handle('history:remove', (_, url) => { const before = historyItems.length; historyItems = historyItems.filter(x => x.url !== url); writeJson(HISTORY_FILE(), historyItems); send('history-update', historyItems); return { success: before !== historyItems.length }; });
 ipcMain.handle('downloads:path', () => app.getPath('downloads'));
+ipcMain.handle('downloads:list', () => downloads);
+ipcMain.handle('downloads:clear', () => { downloads = []; send('downloads-update', downloads); return true; });
 ipcMain.handle('browser:get-state', () => ({ tabs: tabs.length, activeTab, historyCount: historyItems.length, bookmarkCount: bookmarks.length, private: !!tabs[activeTab]?.private }));
 ipcMain.handle('browser:clear-data', async () => { historyItems = []; bookmarks = []; writeJson(HISTORY_FILE(), historyItems); writeJson(BOOKMARKS_FILE(), bookmarks); await session.defaultSession.clearStorageData(); send('history-update', historyItems); send('bookmarks-update', bookmarks); sendBookmarkState(); return true; });
 
