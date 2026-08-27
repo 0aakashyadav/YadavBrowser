@@ -54,14 +54,20 @@ async function runSearch(value,keep=false){
   document.getElementById('error').innerHTML='';
   window.scrollTo(0,0);
   try{
-    if(!window.browserAPI?.searchWeb){
-      externalSearch(valueClean);
+    if(window.browserAPI?.searchWeb){
+      const data=await window.browserAPI.searchWeb({q:valueClean,mode,page:pageNo,timeRange,safeSearch});
+      render(data);
       return;
     }
-    const data=await window.browserAPI.searchWeb({q:valueClean,mode,page:pageNo,timeRange,safeSearch});
+    const params=new URLSearchParams({
+      q:valueClean, mode, page:String(pageNo), timeRange, safeSearch:String(safeSearch)
+    });
+    const response=await fetch('/api/search?'+params.toString(),{headers:{accept:'application/json'}});
+    const data=await response.json().catch(()=>({}));
+    if(!response.ok) throw new Error(data.error||'Search API unavailable');
     render(data);
   }catch(e){
-    document.getElementById('error').innerHTML='<div class="error">Search backend unavailable. Opening a web fallback.</div>';
+    document.getElementById('error').innerHTML='<div class="error">Yadav Search backend is unavailable. Opening a web fallback.</div>';
     externalSearch(valueClean);
   }
 }
