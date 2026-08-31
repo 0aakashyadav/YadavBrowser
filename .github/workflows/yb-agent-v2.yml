@@ -1,0 +1,33 @@
+name: YB Agent Core v2
+
+on:
+  push:
+    branches: [main, 'yb-agent-*']
+  pull_request:
+    branches: [main]
+
+permissions:
+  contents: read
+
+jobs:
+  agent-core:
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Setup Node
+        uses: actions/setup-node@v4
+        with:
+          node-version: 22
+          cache: npm
+
+      - name: Install dependencies
+        run: npm ci
+
+      - name: Verify agent syntax and safety
+        run: npm run agent:test
+
+      - name: Verify JavaScript syntax
+        run: npm run agent:verify
